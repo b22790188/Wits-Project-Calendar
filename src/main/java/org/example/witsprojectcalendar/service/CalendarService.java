@@ -12,6 +12,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
+import com.google.api.services.calendar.model.Event;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
@@ -55,6 +56,17 @@ public class CalendarService {
             new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
                 .setApplicationName(APPLICATION_NAME)
                 .build();
+    }
+
+    public boolean quickAddEvent(String title) throws IOException {
+        Event quickAdd = service.events().quickAdd("primary", title).execute();
+        log.info(quickAdd.toString());
+        return true;
+    }
+
+    public boolean deleteEvent(String id) throws IOException {
+        service.events().delete("primary", id).execute();
+        return true;
     }
 
 

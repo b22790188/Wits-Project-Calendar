@@ -15,7 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/*")
-            .allowedOrigins(allowedOrigins) // Vue 應用的 URL
+            .allowedOrigins(allowedOrigins) // Vue Server URL
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .allowedHeaders("")
             .allowCredentials(true);

@@ -70,12 +70,15 @@ const addEvent = (event) => {
   }
 }
 
+// format event data to match FullCalendar API
 const formattedEvent = (event) => {
   const startDate = formattedDate(event.start.date.value)
   const summary = event.summary
 
   return { title: summary, date: startDate }
 }
+
+// format date to match FullCalendar API
 const formattedDate = (timestamp) => {
   const date = new Date(timestamp)
   return format(date, 'yyyy-MM-dd')

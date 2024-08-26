@@ -8,6 +8,7 @@ import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import axios from 'axios'
+import { format } from 'date-fns'
 
 const emit = defineEmits(['date-click'])
 const props = defineProps(['weekends'])
@@ -22,10 +23,6 @@ const calendarOptions = ref({
     console.log('Date clicked in Calendar:', arg.dateStr)
     emit('date-click', arg.dateStr)
   },
-  // events: [
-  //         { title: 'event 1', date: '2019-04-01' },
-  //         { title: 'event 2', date: '2019-04-02' }
-  //       ]
 
   events: events.value
 })
@@ -53,8 +50,14 @@ onMounted(async () => {
   console.log('Calendar mounted')
   try {
     const response = await axios.get('http://localhost:8080/events')
-    console.log(response.data);
-    events.value = response.data
+    let fetchedevents = []
+  
+    for(const event of response.data) {
+      fetchedevents.push(formattedEvent(event)) 
+    }
+
+    console.log('Fetched events:', events)
+    events.value = fetchedevents 
   } catch (error) {
     console.error('Failed to fetch events:', error)
   }
@@ -65,6 +68,17 @@ const addEvent = (event) => {
     const api = fullCalendar.value.getApi()
     api.addEvent(event)
   }
+}
+
+const formattedEvent = (event) => {
+  const startDate = formattedDate(event.start.date.value)
+  const summary = event.summary
+
+  return { title: summary, date: startDate }
+}
+const formattedDate = (timestamp) => {
+  const date = new Date(timestamp)
+  return format(date, 'yyyy-MM-dd')
 }
 
 defineExpose({ addEvent })

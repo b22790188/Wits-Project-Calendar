@@ -13,7 +13,6 @@ import { format } from 'date-fns'
 const emit = defineEmits(['date-click'])
 const props = defineProps(['weekends'])
 const fullCalendar = ref(null)
-const events = ref([])
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin],
@@ -24,43 +23,7 @@ const calendarOptions = ref({
     emit('date-click', arg.dateStr)
   },
 
-  events: events.value
-})
-
-watch(
-  () => props.weekends,
-  (newValue) => {
-    console.log('Weekends prop changed:', newValue)
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.setOption('weekends', newValue)
-    }
-  }
-)
-
-watch(events, (newEvents) => {
-  if (fullCalendar.value) {
-    const api = fullCalendar.value.getApi()
-    api.removeAllEvents()
-    api.addEventSource(newEvents)
-  }
-})
-
-onMounted(async () => {
-  console.log('Calendar mounted')
-  try {
-    const response = await axios.get('http://localhost:8080/events')
-    let fetchedevents = []
-  
-    for(const event of response.data) {
-      fetchedevents.push(formattedEvent(event)) 
-    }
-
-    console.log('Fetched events:', events)
-    events.value = fetchedevents 
-  } catch (error) {
-    console.error('Failed to fetch events:', error)
-  }
+  events: []
 })
 
 const addEvent = (event) => {
@@ -83,6 +46,32 @@ const formattedDate = (timestamp) => {
   const date = new Date(timestamp)
   return format(date, 'yyyy-MM-dd')
 }
+
+onMounted(async () => {
+  console.log('Calendar mounted')
+  try {
+    const response = await axios.get('http://localhost:8080/events')
+    let fetchedevents = response.data.map(formattedEvent)
+
+    if (fullCalendar.value) {
+      const api = fullCalendar.value.getApi()
+      api.addEventSource(fetchedevents)
+    }
+  } catch (error) {
+    console.error('Failed to fetch events:', error)
+  }
+})
+
+watch(
+  () => props.weekends,
+  (newValue) => {
+    console.log('Weekends prop changed:', newValue)
+    if (fullCalendar.value) {
+      const api = fullCalendar.value.getApi()
+      api.setOption('weekends', newValue)
+    }
+  }
+)
 
 defineExpose({ addEvent })
 </script>

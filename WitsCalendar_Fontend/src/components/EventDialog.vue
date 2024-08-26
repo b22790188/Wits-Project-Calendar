@@ -43,11 +43,11 @@ watch(
   () => props.event,
   (newVal) => {
     localEvent.value = { ...newVal }
-  }
+  },
+  { deep: true }
 )
 
 const handleAddEvent = () => {
-  console.log('Add event clicked:', localEvent.value)
   if (localEvent.value.title && localEvent.value.date) {
     emit('add-event', { ...localEvent.value })
     dialogVisible.value = false

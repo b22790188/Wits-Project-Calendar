@@ -145,6 +145,7 @@ onMounted(async () => {
     let fetchedevents = []
 
     for (const event of response.data) {
+      console.log(event)
       fetchedevents.push(formattedEvent(event))
     }
 
@@ -246,11 +247,21 @@ const editEvent = (updatedEvent) => {
 
 // format event data to match FullCalendar API
 const formattedEvent = (event) => {
-  const startDate = formattedDate(event.start.date.value)
-  const summary = event.summary
-  const googleEventId = event.id
+  const { summary, start, end, googleEventId } = event
+  const hasDateTime = !!start.dateTime
 
-  return { title: summary, date: startDate, extendsProps: { googleEventId } }
+  return hasDateTime
+    ? {
+        title: summary,
+        start: formattedDateTime(start.dateTime.value),
+        end: formattedDateTime(end.dateTime.value),
+        extendsProps: { googleEventId }
+      }
+    : {
+        title: summary,
+        date: formattedDate(start.date.value),
+        extendsProps: { googleEventId }
+      }
 }
 
 // format date to match FullCalendar API
@@ -258,6 +269,21 @@ const formattedDate = (timestamp) => {
   const date = new Date(timestamp)
   return format(date, 'yyyy-MM-dd')
 }
+
+const formattedDateTime = (timestamp) => {
+  return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss')
+}
+
+watch(
+  () => props.weekends,
+  (newValue) => {
+    console.log('Weekends prop changed:', newValue)
+    if (fullCalendar.value) {
+      const api = fullCalendar.value.getApi()
+      api.setOption('weekends', newValue)
+    }
+  }
+)
 
 defineExpose({ addEvent, editEvent })
 </script>

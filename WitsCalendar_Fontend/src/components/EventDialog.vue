@@ -5,7 +5,7 @@
         <el-input v-model="localEvent.title" />
       </el-form-item>
       <el-form-item label="日期">
-        <el-date-picker v-model="localEvent.date" type="date" />
+        <el-date-picker v-model="localEvent.date" type="datetime" />
       </el-form-item>
     </el-form>
     <template #footer>

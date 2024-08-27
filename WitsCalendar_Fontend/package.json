@@ -11,6 +11,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@bwobbones/fullcalendar5-rightclick": "^1.1.1",
     "@fullcalendar/core": "^6.1.15",
     "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/interaction": "^6.1.15",
@@ -20,6 +21,7 @@
     "element-plus": "^2.8.1",
     "vite-plugin-vue-setup-extend": "^0.4.0",
     "vue": "^3.4.29",
+    "vue-context": "^6.0.0",
     "vue-router": "^4.3.3"
   },
   "devDependencies": {

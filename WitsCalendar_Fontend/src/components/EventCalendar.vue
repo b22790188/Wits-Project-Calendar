@@ -19,6 +19,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import listGridPlugin from '@fullcalendar/list'
 import interactionPlugin from '@fullcalendar/interaction'
+import axios from 'axios'
+import { format } from 'date-fns'
 
 const emit = defineEmits(['date-click'])
 const props = defineProps(['weekends'])
@@ -27,6 +29,7 @@ const isPopoverVisible = ref(false)
 const popoverX = ref(0)
 const popoverY = ref(0)
 const selectedDate = ref('')
+const events = ref([])
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin, timeGridPlugin, listGridPlugin],
@@ -43,10 +46,8 @@ const calendarOptions = ref({
     selectedDate.value = info.dateStr
     emit('date-click', info.dateStr)
   },
-  events: [
-    { title: '顯示測試事件 01', date: '2024-08-30' },
-    { title: '顯示測試事件 02', date: '2024-08-31' }
-  ]
+
+  events: events.value
 })
 
 watch(
@@ -62,6 +63,30 @@ watch(
 onMounted(() => {
   fullCalendar.value.$el.addEventListener('contextmenu', handleContextMenu)
   document.addEventListener('click', handleDocumentClick)
+})
+watch(events, (newEvents) => {
+  if (fullCalendar.value) {
+    const api = fullCalendar.value.getApi()
+    api.removeAllEvents()
+    api.addEventSource(newEvents)
+  }
+})
+
+onMounted(async () => {
+  console.log('Calendar mounted')
+  try {
+    const response = await axios.get('http://localhost:8080/events')
+    let fetchedevents = []
+
+    for (const event of response.data) {
+      fetchedevents.push(formattedEvent(event))
+    }
+
+    console.log('Fetched events:', events)
+    events.value = fetchedevents
+  } catch (error) {
+    console.error('Failed to fetch events:', error)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -113,6 +138,20 @@ const addEvent = (event) => {
     const api = fullCalendar.value.getApi()
     api.addEvent(event)
   }
+}
+
+// format event data to match FullCalendar API
+const formattedEvent = (event) => {
+  const startDate = formattedDate(event.start.date.value)
+  const summary = event.summary
+
+  return { title: summary, date: startDate }
+}
+
+// format date to match FullCalendar API
+const formattedDate = (timestamp) => {
+  const date = new Date(timestamp)
+  return format(date, 'yyyy-MM-dd')
 }
 
 defineExpose({ addEvent })

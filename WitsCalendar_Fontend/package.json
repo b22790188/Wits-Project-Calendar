@@ -18,6 +18,8 @@
     "@fullcalendar/list": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.15",
     "@fullcalendar/vue3": "^6.1.15",
+    "axios": "^1.7.5",
+    "date-fns": "^3.6.0",
     "element-plus": "^2.8.1",
     "vite-plugin-vue-setup-extend": "^0.4.0",
     "vue": "^3.4.29",

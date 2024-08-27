@@ -5,7 +5,7 @@
         <el-input v-model="localEvent.title" />
       </el-form-item>
       <el-form-item label="日期">
-        <el-date-picker v-model="localEvent.date" type="date" />
+        <el-date-picker v-model="localEvent.date" type="datetime" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -43,11 +43,11 @@ watch(
   () => props.event,
   (newVal) => {
     localEvent.value = { ...newVal }
-  }
+  },
+  { deep: true }
 )
 
 const handleAddEvent = () => {
-  console.log('Add event clicked:', localEvent.value)
   if (localEvent.value.title && localEvent.value.date) {
     emit('add-event', { ...localEvent.value })
     dialogVisible.value = false

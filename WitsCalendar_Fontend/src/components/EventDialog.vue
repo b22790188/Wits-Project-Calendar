@@ -1,5 +1,10 @@
 <template>
-  <el-dialog title="新增事件" v-model="dialogVisible" width="30%" @close="resetForm">
+  <el-dialog
+    :title="mode === 'edit' ? '修改事件' : '新增事件'"
+    v-model="dialogVisible"
+    width="30%"
+    @close="resetForm"
+  >
     <el-form :model="localEvent">
       <el-form-item label="事件標題">
         <el-input v-model="localEvent.title" />
@@ -10,7 +15,9 @@
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="handleAddEvent">確定</el-button>
+      <el-button type="primary" @click="handleSaveEvent">
+        {{ mode === 'edit' ? '修改' : '新增' }}
+      </el-button>
     </template>
   </el-dialog>
 </template>
@@ -20,10 +27,15 @@ import { ref, watch } from 'vue'
 
 const props = defineProps({
   visible: Boolean,
-  event: Object
+  event: Object,
+  mode: {
+    type: String,
+    // default to 'add' mode
+    default: 'add'
+  }
 })
 
-const emit = defineEmits(['update:visible', 'add-event'])
+const emit = defineEmits(['update:visible', 'add-event', 'edit-event'])
 
 const dialogVisible = ref(props.visible)
 const localEvent = ref({ ...props.event })
@@ -47,9 +59,22 @@ watch(
   { deep: true }
 )
 
-const handleAddEvent = () => {
+const handleSaveEvent = () => {
   if (localEvent.value.title && localEvent.value.date) {
-    emit('add-event', { ...localEvent.value })
+    if (props.mode === 'edit') {
+      emit('edit-event', {
+        id: localEvent.value.id,
+        title: localEvent.value.title,
+        date: localEvent.value.date
+      })
+      console.log('localEvent:', localEvent.value)
+    } else {
+      emit('add-event', {
+        title: localEvent.value.title,
+        date: localEvent.value.date
+      })
+      console.log('localEvent:', localEvent.value)
+    }
     dialogVisible.value = false
     resetForm()
   }

@@ -1,12 +1,19 @@
 <template>
   <div id="app">
-    <!-- <el-button type="primary" @click="toggleWeekends"
-      >Toggle Weekends ({{ showWeekends ? 'On' : 'Off' }})
-    </el-button> -->
+    <Calendar
+      ref="calendar"
+      @date-click="handleDateClick"
+      :weekends="showWeekends"
+      @edit-event="handleEditEvent"
+    />
 
-    <Calendar ref="calendar" @date-click="handleDateClick" :weekends="showWeekends" />
-
-    <EventDialog v-model:visible="isDialogVisible" :event="newEvent" @add-event="addEvent" />
+    <EventDialog
+      v-model:visible="isDialogVisible"
+      :event="selectedEventData"
+      :mode="dialogMode"
+      @add-event="addEvent"
+      @edit-event="editEvent"
+    />
   </div>
 </template>
 
@@ -16,12 +23,24 @@ import Calendar from './components/EventCalendar.vue'
 import EventDialog from './components/EventDialog.vue'
 
 const isDialogVisible = ref(false)
-const newEvent = ref({ title: '', date: '' })
+const selectedEventData = ref({ title: '', date: '' })
 const showWeekends = ref(true)
 const calendar = ref(null)
+const dialogMode = ref('add')
 
 const handleDateClick = (dateStr) => {
-  newEvent.value.date = dateStr
+  selectedEventData.value.date = dateStr
+  dialogMode.value = 'add'
+  isDialogVisible.value = true
+}
+
+const handleEditEvent = (event) => {
+  selectedEventData.value = {
+    id: event.id,
+    title: event.title,
+    date: event.start
+  }
+  dialogMode.value = 'edit'
   isDialogVisible.value = true
 }
 
@@ -33,12 +52,14 @@ const addEvent = (event) => {
   }
 }
 
-// const toggleWeekends = () => {
-//   showWeekends.value = !showWeekends.value
-//   console.log('Toggled weekends:', showWeekends.value)
-// }
+const editEvent = (event) => {
+  console.log('calendar.value:', calendar.value)
+  if (calendar.value) {
+    calendar.value.editEvent(event)
+  } else {
+    console.warn('Event not found')
+  }
+}
 
-onMounted(() => {
-  console.log('App mounted')
-})
+onMounted(() => {})
 </script>

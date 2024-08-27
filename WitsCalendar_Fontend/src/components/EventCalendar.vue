@@ -79,6 +79,7 @@ onMounted(async () => {
     let fetchedevents = []
 
     for (const event of response.data) {
+      console.log(event)
       fetchedevents.push(formattedEvent(event))
     }
 
@@ -142,10 +143,20 @@ const addEvent = (event) => {
 
 // format event data to match FullCalendar API
 const formattedEvent = (event) => {
-  const startDate = formattedDate(event.start.date.value)
-  const summary = event.summary
+  const { summary, start, end } = event
+  const hasDateTime = !!start.dateTime
 
-  return { title: summary, date: startDate }
+  return hasDateTime
+    ? {
+        title: summary,
+        start: formattedDateTime(start.dateTime.value),
+        end: formattedDateTime(end.dateTime.value)
+      }
+    : {
+        title: summary,
+        date: formattedDate(start.date.value)
+      }
+
 }
 
 // format date to match FullCalendar API
@@ -154,20 +165,9 @@ const formattedDate = (timestamp) => {
   return format(date, 'yyyy-MM-dd')
 }
 
-onMounted(async () => {
-  console.log('Calendar mounted')
-  try {
-    const response = await axios.get('http://localhost:8080/events')
-    let fetchedevents = response.data.map(formattedEvent)
-
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.addEventSource(fetchedevents)
-    }
-  } catch (error) {
-    console.error('Failed to fetch events:', error)
-  }
-})
+const formattedDateTime = (timestamp) => {
+  return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss')
+}
 
 watch(
   () => props.weekends,

@@ -5,9 +5,9 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class UpdateEventRequest {
+public class InsertEventRequest {
     private String newSummary;
-    //    private String newDescription;
+//    private String newDescription;
     private String newStart;
     private String newEnd;
 }

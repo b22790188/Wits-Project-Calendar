@@ -9,8 +9,11 @@
       <el-form-item label="事件標題">
         <el-input v-model="localEvent.title" />
       </el-form-item>
-      <el-form-item label="日期">
-        <el-date-picker v-model="localEvent.date" type="datetime" />
+      <el-form-item label="開始日期">
+        <el-date-picker v-model="localEvent.startDate" type="datetime" />
+      </el-form-item>
+      <el-form-item label="結束日期">
+        <el-date-picker v-model="localEvent.endDate" type="datetime" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -60,20 +63,20 @@ watch(
 )
 
 const handleSaveEvent = () => {
-  if (localEvent.value.title && localEvent.value.date) {
+  if (localEvent.value.title && localEvent.value.startDate && localEvent.value.endDate) {
     if (props.mode === 'edit') {
       emit('edit-event', {
         id: localEvent.value.id,
         title: localEvent.value.title,
-        date: localEvent.value.date
+        startDate: localEvent.value.startDate,
+        endDate: localEvent.value.endDate
       })
-      console.log('localEvent:', localEvent.value)
     } else {
       emit('add-event', {
         title: localEvent.value.title,
-        date: localEvent.value.date
+        startDate: localEvent.value.startDate,
+        endDate: localEvent.value.endDate
       })
-      console.log('localEvent:', localEvent.value)
     }
     dialogVisible.value = false
     resetForm()
@@ -81,6 +84,6 @@ const handleSaveEvent = () => {
 }
 
 const resetForm = () => {
-  localEvent.value = { title: '', date: '' }
+  localEvent.value = { title: '', startDate: '', endDate: '' }
 }
 </script>

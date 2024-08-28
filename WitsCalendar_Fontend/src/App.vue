@@ -23,13 +23,16 @@ import Calendar from './components/EventCalendar.vue'
 import EventDialog from './components/EventDialog.vue'
 
 const isDialogVisible = ref(false)
-const selectedEventData = ref({ title: '', date: '' })
+const selectedEventData = ref({ title: '', startDate: '', endDate: '' })
 const showWeekends = ref(true)
 const calendar = ref(null)
 const dialogMode = ref('add')
 
 const handleDateClick = (dateStr) => {
-  selectedEventData.value.date = dateStr
+  selectedEventData.value.startDate = dateStr
+  selectedEventData.value.endDate = new Date(
+    new Date(dateStr).getTime() + 60 * 60 * 1000
+  ).toISOString()
   dialogMode.value = 'add'
   isDialogVisible.value = true
 }
@@ -38,7 +41,8 @@ const handleEditEvent = (event) => {
   selectedEventData.value = {
     id: event.id,
     title: event.title,
-    date: event.start
+    startDate: event.start,
+    endDate: event.end
   }
   dialogMode.value = 'edit'
   isDialogVisible.value = true

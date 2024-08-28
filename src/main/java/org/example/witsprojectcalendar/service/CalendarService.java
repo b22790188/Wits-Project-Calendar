@@ -17,6 +17,7 @@ import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 import lombok.extern.log4j.Log4j2;
+import org.example.witsprojectcalendar.data.dto.InsertEventRequest;
 import org.example.witsprojectcalendar.data.dto.UpdateEventRequest;
 import org.springframework.stereotype.Service;
 
@@ -64,8 +65,19 @@ public class CalendarService {
 
     public boolean quickAddEvent(String title) throws IOException {
         Event quickAdd = service.events().quickAdd("primary", title).execute();
-        log.info(quickAdd.toString());
+        log.info("quickAdd :{} ",quickAdd.toString());
         return true;
+    }
+
+    public Event insertEvent(InsertEventRequest request) throws IOException {
+        Event event = new Event()
+                .setSummary(request.getNewSummary())
+//                .setDescription(request.getNewDescription())
+                .setStart(new EventDateTime().setDateTime(new DateTime(request.getNewStart())))
+                .setEnd(new EventDateTime().setDateTime(new DateTime(request.getNewEnd())));
+        Event createdEvent = service.events().insert("primary", event).execute();
+        log.info("Event created: {} ({})", createdEvent.getSummary(), createdEvent.getId());
+        return createdEvent;
     }
 
     public boolean deleteEvent(String id) throws IOException {

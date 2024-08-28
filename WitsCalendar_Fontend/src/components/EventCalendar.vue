@@ -7,9 +7,17 @@
       class="custom-popover"
       :style="{ left: `${popoverX}px`, top: `${popoverY}px` }"
     >
-      <div v-if="!isDeleteOptionVisible" @click="showAddEventDialog">新增事件</div>
-      <div v-if="isDeleteOptionVisible" @click="deleteSelectedEvent">刪除事件</div>
-      <div v-if="isDeleteOptionVisible" @click="showEditEventDialog">修改事件</div>
+      <div class="popover-content">
+        <el-button v-if="isDeleteOptionVisible" type="danger" @click="deleteSelectedEvent">
+          刪除事件
+        </el-button>
+        <el-button v-if="isDeleteOptionVisible" type="warning" @click="showEditEventDialog">
+          修改事件
+        </el-button>
+        <el-button v-if="!isDeleteOptionVisible" type="primary" @click="showAddEventDialog">
+          新增事件
+        </el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -24,7 +32,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import axios from 'axios'
 import { format } from 'date-fns'
 
-const emit = defineEmits(['date-click'])
+const emit = defineEmits(['date-click', 'edit-event'])
 const props = defineProps(['weekends'])
 const fullCalendar = ref(null)
 const isPopoverVisible = ref(false)
@@ -56,8 +64,8 @@ const calendarOptions = ref({
     })
   },
   eventRemove: async function (info) {
-    const googleEventId = info.event.extendedProps.extendsProps?.googleEventId
-
+    const googleEventId = info.event.extendedProps.extendsProps?.id
+    console.log(googleEventId)
     if (googleEventId) {
       try {
         await axios.delete('http://localhost:8080/events', {
@@ -73,20 +81,13 @@ const calendarOptions = ref({
     }
   },
   eventChange: async function (info) {
-    const googleEventId = info.event.extendedProps.extendsProps?.googleEventId
-
-    const newStart = info.event.start ? info.event.start.toISOString() : null
-
-    const newEnd = newStart
-      ? new Date(info.event.start.getTime() + 60 * 60 * 1000).toISOString()
-      : null
-
+    const googleEventId = info.event.extendedProps.extendsProps?.id
     if (googleEventId) {
       try {
         const requestData = {
           newSummary: info.event.title,
-          newStart: newStart,
-          newEnd: newEnd
+          newStart: info.event.start ? info.event.start.toISOString() : null,
+          newEnd: info.event.end ? info.event.end.toISOString() : null
         }
 
         await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
@@ -98,10 +99,33 @@ const calendarOptions = ref({
         console.log('Event successfully updated in Google Calendar.')
       } catch (error) {
         console.error('Failed to update event in Google Calendar:', error)
-        info.revert()
       }
     } else {
       console.warn('Google Event ID is not available.')
+    }
+  },
+  eventAdd: async function (info) {
+    console.log('info:', info)
+    const newEvent = {
+      newSummary: info.event.title,
+      newStart: info.event.start.toISOString(),
+      newEnd: info.event.end ? info.event.end.toISOString() : null
+    }
+
+    try {
+      const response = await axios.post('http://localhost:8080/events', newEvent, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      const googleEventId = response.data.id
+      console.log('Google Event ID:', googleEventId)
+      info.event.setExtendedProp('extendsProps', { id: googleEventId })
+
+      console.log('Event successfully added to Google Calendar.')
+    } catch (error) {
+      console.error('Failed to add event to Google Calendar:', error)
+      info.revert()
     }
   },
   events: events.value
@@ -207,7 +231,7 @@ const deleteSelectedEvent = () => {
   if (selectedEvent.value) {
     const confirmDelete = confirm('確定要刪除此事件嗎？')
     if (confirmDelete) {
-      selectedEvent.value.remove() // 刪除事件
+      selectedEvent.value.remove()
       isDeleteOptionVisible.value = false
       selectedEvent.value = null
     }
@@ -227,40 +251,75 @@ const showEditEventDialog = () => {
 const addEvent = (event) => {
   if (fullCalendar.value) {
     const api = fullCalendar.value.getApi()
-    api.addEvent(event)
+    const newEvent = {
+      title: event.title,
+      start: event.startDate,
+      end: event.endDate
+    }
+
+    api.addEvent(newEvent)
+    console.log('Added event:', newEvent)
   }
 }
 
 const editEvent = (updatedEvent) => {
+  if (!updatedEvent.id) {
+    console.error('No event ID provided for update.')
+    return
+  }
+
   if (fullCalendar.value) {
     const api = fullCalendar.value.getApi()
     const existingEvent = api.getEventById(updatedEvent.id)
 
+    console.log('Updating event:', updatedEvent)
+    console.log('Existing event:', existingEvent)
+
     if (existingEvent) {
+      console.log('Before update:', {
+        title: existingEvent.title,
+        start: existingEvent.start,
+        end: existingEvent.end
+      })
+
       existingEvent.setProp('title', updatedEvent.title)
-      existingEvent.setStart(updatedEvent.date)
+      existingEvent.setDates(updatedEvent.startDate, updatedEvent.endDate)
+
+      console.log('After update:', {
+        title: existingEvent.title,
+        start: existingEvent.start,
+        end: existingEvent.end
+      })
+
+      api.refetchEvents()
+
+      console.log('Event updated successfully')
     } else {
-      console.warn('Event not found')
+      console.warn('Event not found:', updatedEvent.id)
     }
+  } else {
+    console.error('Calendar reference not found')
   }
 }
 
 // format event data to match FullCalendar API
 const formattedEvent = (event) => {
-  const { summary, start, end, googleEventId } = event
+  const { summary, start, end, id } = event
   const hasDateTime = !!start.dateTime
 
   return hasDateTime
     ? {
+        id: id,
         title: summary,
         start: formattedDateTime(start.dateTime.value),
         end: formattedDateTime(end.dateTime.value),
-        extendsProps: { googleEventId }
+        extendsProps: { id }
       }
     : {
+        id: id,
         title: summary,
         date: formattedDate(start.date.value),
-        extendsProps: { googleEventId }
+        extendsProps: { id }
       }
 }
 
@@ -291,12 +350,25 @@ defineExpose({ addEvent, editEvent })
 <style scoped>
 .custom-popover {
   position: fixed;
-  width: 65px;
+  width: 80px;
   background-color: white;
   border: 1px solid #ccc;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   padding: 10px;
   border-radius: 4px;
+  flex-direction: column;
+}
+
+.popover-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.el-button {
+  width: 100%;
+  /* @important == override element plus default css */
+  margin-left: 0px !important;
 }
 </style>

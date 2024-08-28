@@ -1,7 +1,9 @@
 package org.example.witsprojectcalendar.controller;
 
 import com.google.api.services.calendar.model.Event;
+import lombok.extern.log4j.Log4j2;
 import org.example.witsprojectcalendar.data.dto.ErrorResponseDTO;
+import org.example.witsprojectcalendar.data.dto.InsertEventRequest;
 import org.example.witsprojectcalendar.data.dto.UpdateEventRequest;
 import org.example.witsprojectcalendar.service.CalendarService;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 @Controller
+@Log4j2
 public class CalendarController {
 
     private final CalendarService calendarService;
@@ -21,10 +24,11 @@ public class CalendarController {
     }
 
     @PostMapping("/events")
-    public ResponseEntity<?> quickAddEvents(@RequestParam String eventTitle) throws GeneralSecurityException, IOException {
-        boolean isCreated = calendarService.quickAddEvent(eventTitle);
-        return isCreated ? ResponseEntity.ok("Create event success")
-            : ResponseEntity.badRequest().body(new ErrorResponseDTO("Create event failed"));
+    public ResponseEntity<?> InsertEvents(@RequestBody InsertEventRequest request) throws GeneralSecurityException, IOException {
+        log.info("Received event creation request: {}", request);
+        Event isCreated = calendarService.insertEvent(request);
+        return ResponseEntity.ok(isCreated);
+
     }
 
     @DeleteMapping("/events")

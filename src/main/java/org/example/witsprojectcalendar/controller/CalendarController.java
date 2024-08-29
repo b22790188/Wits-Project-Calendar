@@ -7,6 +7,8 @@ import org.example.witsprojectcalendar.data.dto.InsertEventRequest;
 import org.example.witsprojectcalendar.data.dto.UpdateEventRequest;
 import org.example.witsprojectcalendar.service.CalendarService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +41,11 @@ public class CalendarController {
 
     @GetMapping("/events")
     public ResponseEntity<?> getEvents() throws IOException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String accessToken = authentication.getCredentials().toString();
+
+        log.info(accessToken);
+
         return ResponseEntity.ok(calendarService.getEvents());
     }
 
@@ -49,4 +56,8 @@ public class CalendarController {
         return ResponseEntity.ok(updateEvent);
     }
 
+    @PostMapping("/testLogin")
+    public ResponseEntity<?> testAccessToken(@RequestParam String accessToken) throws IOException, GeneralSecurityException {
+        return ResponseEntity.ok(calendarService.testCalendarService(accessToken));
+    }
 }

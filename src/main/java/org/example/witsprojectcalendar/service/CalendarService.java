@@ -17,6 +17,8 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import lombok.extern.log4j.Log4j2;
 import org.example.witsprojectcalendar.data.dto.UpdateEventRequest;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,8 @@ import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Log4j2
@@ -53,28 +57,58 @@ public class CalendarService {
         Collections.singletonList(CalendarScopes.CALENDAR);
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
 
-    private final Calendar service;
 
-    public CalendarService() throws IOException, GeneralSecurityException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        this.service =
-            new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+    private final Cache<String, Calendar> calendarCache;
+
+//    private final Calendar service;
+
+    public CalendarService() {
+        this.calendarCache = CacheBuilder.newBuilder()
+            .maximumSize(100)
+            .expireAfterAccess(55, TimeUnit.MINUTES)
+            .build();
     }
 
-    public boolean quickAddEvent(String title) throws IOException {
+    private Calendar getCalendarService(String accessToken) throws IOException {
+        try {
+            return calendarCache.get(accessToken, () -> createCalendarService(accessToken));
+        } catch (ExecutionException e) {
+            throw new IOException("Failed to create Calendar service", e);
+        }
+    }
+
+    private Calendar createCalendarService(String accessToken) throws IOException, GeneralSecurityException {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
+            .setAccessToken(accessToken);
+
+        return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+            .setApplicationName(APPLICATION_NAME).build();
+    }
+
+//    public CalendarService() throws IOException, GeneralSecurityException {
+//        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+//        this.service =
+//            new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+//                .setApplicationName(APPLICATION_NAME)
+//                .build();
+//    }
+
+    public boolean quickAddEvent(String accessToken, String title) throws IOException {
+        Calendar service = getCalendarService(accessToken);
         Event quickAdd = service.events().quickAdd("primary", title).execute();
         log.info(quickAdd.toString());
         return true;
     }
 
-    public boolean deleteEvent(String id) throws IOException {
+    public boolean deleteEvent(String accessToken, String id) throws IOException {
+        Calendar service = getCalendarService(accessToken);
         service.events().delete("primary", id).execute();
         return true;
     }
 
-    public List<Event> getEvents() throws IOException {
+    public List<Event> getEvents(String accessToken) throws IOException {
+        Calendar service = getCalendarService(accessToken);
         DateTime now = new DateTime(System.currentTimeMillis());
         Events events = service.events().list("primary").setMaxResults(10).setTimeMin(now).setOrderBy("startTime").setSingleEvents(true).execute();
         List<Event> items = events.getItems();
@@ -93,8 +127,8 @@ public class CalendarService {
         return items;
     }
 
-    public Event updateEvent(String eventId, UpdateEventRequest request) throws IOException {
-
+    public Event updateEvent(String accessToken, String eventId, UpdateEventRequest request) throws IOException {
+        Calendar service = getCalendarService(accessToken);
         log.info("Attempting to update event with ID: {}", eventId);
 
         // 把 Id 帶入，然後取得指定的 Event

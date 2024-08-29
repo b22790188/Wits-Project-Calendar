@@ -26,6 +26,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 
@@ -72,9 +78,24 @@ public class CalendarService {
     public Event insertEvent(InsertEventRequest request) throws IOException {
         Event event = new Event()
                 .setSummary(request.getNewSummary())
-//                .setDescription(request.getNewDescription())
-                .setStart(new EventDateTime().setDateTime(new DateTime(request.getNewStart())))
-                .setEnd(new EventDateTime().setDateTime(new DateTime(request.getNewEnd())));
+                .setDescription(request.getNewDescription());
+
+        if (request.isAllDay()) {
+            log.info("insert All day event");
+            LocalDate startDate = parseDate(request.getNewStart());
+            LocalDate endDate = parseDate(request.getNewEnd());
+
+            event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
+                    .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
+        } else {
+            log.info("insert Normal event");
+            Instant startInstant = parseDateTime(request.getNewStart());
+            Instant endInstant = parseDateTime(request.getNewEnd());
+
+            event.setStart(new EventDateTime().setDateTime(new DateTime(startInstant.toEpochMilli())))
+                    .setEnd(new EventDateTime().setDateTime(new DateTime(endInstant.toEpochMilli())));
+        }
+
         Event createdEvent = service.events().insert("primary", event).execute();
         log.info("Event created: {} ({})", createdEvent.getSummary(), createdEvent.getId());
         return createdEvent;
@@ -106,19 +127,26 @@ public class CalendarService {
 
     public Event updateEvent(String eventId, UpdateEventRequest request) throws IOException {
 
-        log.info("Attempting to update event with ID: {}", eventId);
+        Event event = new Event()
+                .setSummary(request.getNewSummary())
+                .setDescription(request.getNewDescription());
 
-        // 把 Id 帶入，然後取得指定的 Event
-        Event event = service.events().get("primary", eventId).execute();
-        log.info("Successfully retrieved event: {}", event.getSummary());
+        if (request.isAllDay()) {
+            log.info("update All day event");
+            LocalDate startDate = parseDate(request.getNewStart());
+            LocalDate endDate = parseDate(request.getNewEnd());
 
-        // 這裡放要更新的內容都塞到 event 物件裡面，目前有 Summary(標題)、Start(開始時間)、End(結束時間)
-        event.setSummary(request.getNewSummary());
+            event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
+                    .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
+        } else {
+            log.info("update Normal event");
+            Instant startInstant = parseDateTime(request.getNewStart());
+            Instant endInstant = parseDateTime(request.getNewEnd());
 
-        event.setStart(new EventDateTime().setDateTime(new DateTime(request.getNewStart())));
-        event.setEnd(new EventDateTime().setDateTime(new DateTime(request.getNewEnd())));
+            event.setStart(new EventDateTime().setDateTime(new DateTime(startInstant.toEpochMilli())))
+                    .setEnd(new EventDateTime().setDateTime(new DateTime(endInstant.toEpochMilli())));
+        }
 
-        // 更新 Event
         Event updatedEvent = service.events().update("primary", eventId, event).execute();
         log.info("Event updated successfully: {} ({})", updatedEvent.getSummary(), updatedEvent.getUpdated());
         return updatedEvent;
@@ -152,5 +180,17 @@ public class CalendarService {
         Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         //returns an authorized Credential object.
         return credential;
+    }
+
+    private LocalDate parseDate(String dateString) {
+        try {
+            return LocalDate.parse(dateString, DateTimeFormatter.ISO_DATE);
+        } catch (DateTimeParseException e) {
+            return Instant.parse(dateString).atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+    }
+
+    private Instant parseDateTime(String dateTimeString) {
+        return Instant.parse(dateTimeString);
     }
 }

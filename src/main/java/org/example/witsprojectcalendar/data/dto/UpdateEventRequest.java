@@ -7,7 +7,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UpdateEventRequest {
     private String newSummary;
-    //    private String newDescription;
+    private String newDescription;
     private String newStart;
     private String newEnd;
+    private boolean isAllDay;
 }

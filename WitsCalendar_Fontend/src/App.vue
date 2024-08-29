@@ -3,10 +3,11 @@
     <Calendar
       ref="calendar"
       @date-click="handleDateClick"
-      :weekends="showWeekends"
       @edit-event="handleEditEvent"
+      @event-click="handleEventClick"
     />
 
+    <!-- add & edit event dialog -->
     <EventDialog
       v-model:visible="isDialogVisible"
       :event="selectedEventData"
@@ -14,6 +15,9 @@
       @add-event="addEvent"
       @edit-event="editEvent"
     />
+
+    <!-- event detail dialog -->
+    <EventDetailDialog v-model:visible="isDetailDialogVisible" :event="selectedEventData" />
   </div>
 </template>
 
@@ -21,18 +25,38 @@
 import { ref, onMounted } from 'vue'
 import Calendar from './components/EventCalendar.vue'
 import EventDialog from './components/EventDialog.vue'
+import EventDetailDialog from './components/EventDetailDialog.vue'
+
+// enum
+const Time = {
+  ONEHOUR: 60 * 60 * 1000
+}
 
 const isDialogVisible = ref(false)
-const selectedEventData = ref({ title: '', startDate: '', endDate: '' })
-const showWeekends = ref(true)
+const isDetailDialogVisible = ref(false)
+const selectedEventData = ref({ title: '', startDate: '', endDate: '', description: '' })
 const calendar = ref(null)
 const dialogMode = ref('add')
 
 const handleDateClick = (dateStr) => {
-  selectedEventData.value.startDate = dateStr
-  selectedEventData.value.endDate = new Date(
-    new Date(dateStr).getTime() + 60 * 60 * 1000
-  ).toISOString()
+  selectedEventData.value = {
+    title: '',
+    startDate: '',
+    endDate: '',
+    description: '',
+    allDay: false
+  }
+
+  // date formate is 'YYYY-MM-DD'
+  const fullDateStr = `${dateStr}T00:00:00`
+
+  const startDate = new Date(fullDateStr)
+
+  const endDate = new Date(startDate.getTime() + Time.ONEHOUR)
+
+  selectedEventData.value.startDate = startDate.toISOString()
+  selectedEventData.value.endDate = endDate.toISOString()
+
   dialogMode.value = 'add'
   isDialogVisible.value = true
 }
@@ -42,10 +66,23 @@ const handleEditEvent = (event) => {
     id: event.id,
     title: event.title,
     startDate: event.start,
-    endDate: event.end
+    endDate: event.end,
+    description: event.extendedProps.description,
+    allDay: event.allDay
   }
+  console.log('handleEdit', event)
   dialogMode.value = 'edit'
   isDialogVisible.value = true
+}
+
+const handleEventClick = (event) => {
+  selectedEventData.value = {
+    title: event.title,
+    startDate: event.start,
+    endDate: event.end,
+    description: event.extendedProps.description
+  }
+  isDetailDialogVisible.value = true
 }
 
 const addEvent = (event) => {

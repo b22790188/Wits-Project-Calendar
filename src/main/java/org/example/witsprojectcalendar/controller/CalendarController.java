@@ -24,18 +24,17 @@ public class CalendarController {
     }
 
     @PostMapping("/events")
-    public ResponseEntity<?> InsertEvents(@RequestBody InsertEventRequest request) throws GeneralSecurityException, IOException {
+    public ResponseEntity<?> insertEvents(@RequestBody InsertEventRequest request) throws GeneralSecurityException, IOException {
         log.info("Received event creation request: {}", request);
-        Event isCreated = calendarService.insertEvent(request);
-        return ResponseEntity.ok(isCreated);
-
+        Event createdEvent = calendarService.insertEvent(request);
+        return ResponseEntity.ok(createdEvent);
     }
 
     @DeleteMapping("/events")
     public ResponseEntity<?> deleteEvents(@RequestParam String eventId) throws GeneralSecurityException, IOException {
         boolean isDeleted = calendarService.deleteEvent(eventId);
         return isDeleted ? ResponseEntity.noContent().build()
-            : ResponseEntity.badRequest().body(new ErrorResponseDTO("Delete event failed"));
+                : ResponseEntity.badRequest().body(new ErrorResponseDTO("Delete event failed"));
     }
 
     @GetMapping("/events")
@@ -46,6 +45,7 @@ public class CalendarController {
     @PutMapping("/events/{eventId}")
     public ResponseEntity<?> updateEvent(@PathVariable("eventId") String eventId, @RequestBody UpdateEventRequest request) throws IOException {
         Event updateEvent = calendarService.updateEvent(eventId, request);
+        log.info("Updated event: {}", updateEvent);
         return ResponseEntity.ok(updateEvent);
     }
 

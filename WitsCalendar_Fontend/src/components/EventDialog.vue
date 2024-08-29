@@ -9,11 +9,23 @@
       <el-form-item label="事件標題">
         <el-input v-model="localEvent.title" />
       </el-form-item>
+      <el-form-item label="全天">
+        <el-checkbox v-model="localEvent.allDay">全天</el-checkbox>
+      </el-form-item>
       <el-form-item label="開始日期">
-        <el-date-picker v-model="localEvent.startDate" type="datetime" />
+        <el-date-picker
+          v-model="localEvent.startDate"
+          :type="localEvent.allDay ? 'date' : 'datetime'"
+        />
       </el-form-item>
       <el-form-item label="結束日期">
-        <el-date-picker v-model="localEvent.endDate" type="datetime" />
+        <el-date-picker
+          v-model="localEvent.endDate"
+          :type="localEvent.allDay ? 'date' : 'datetime'"
+        />
+      </el-form-item>
+      <el-form-item>
+        <el-input type="textarea" v-model="localEvent.description" placeholder="事件描述" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -68,14 +80,18 @@ const handleSaveEvent = () => {
       emit('edit-event', {
         id: localEvent.value.id,
         title: localEvent.value.title,
-        startDate: localEvent.value.startDate,
-        endDate: localEvent.value.endDate
+        startDate: formatDate(localEvent.value.startDate, localEvent.value.allDay),
+        endDate: formatDate(localEvent.value.endDate, localEvent.value.allDay),
+        description: localEvent.value.description,
+        allDay: localEvent.value.allDay
       })
     } else {
       emit('add-event', {
         title: localEvent.value.title,
-        startDate: localEvent.value.startDate,
-        endDate: localEvent.value.endDate
+        startDate: formatDate(localEvent.value.startDate, localEvent.value.allDay),
+        endDate: formatDate(localEvent.value.endDate, localEvent.value.allDay),
+        description: localEvent.value.description,
+        allDay: localEvent.value.allDay
       })
     }
     dialogVisible.value = false
@@ -83,7 +99,26 @@ const handleSaveEvent = () => {
   }
 }
 
+const TimeConstants = {
+  MILLISECONDS_PER_MINUTE: 60 * 1000
+}
+
+const formatDate = (date, isAllDay) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+
+  if (isAllDay) {
+    return new Date(
+      // Use local time offset UTC to prevent date offset
+      dateObj.getTime() - dateObj.getTimezoneOffset() * TimeConstants.MILLISECONDS_PER_MINUTE
+    )
+      .toISOString()
+      .split('T')[0]
+  } else {
+    return dateObj.toISOString()
+  }
+}
+
 const resetForm = () => {
-  localEvent.value = { title: '', startDate: '', endDate: '' }
+  localEvent.value = { title: '', startDate: '', endDate: '', description: '', allDay: false }
 }
 </script>

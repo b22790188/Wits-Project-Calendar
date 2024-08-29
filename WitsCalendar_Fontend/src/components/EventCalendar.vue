@@ -32,8 +32,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import axios from 'axios'
 import { format } from 'date-fns'
 
-const emit = defineEmits(['date-click', 'edit-event'])
-const props = defineProps(['weekends'])
+const emit = defineEmits(['date-click', 'edit-event', 'event-click'])
 const fullCalendar = ref(null)
 const isPopoverVisible = ref(false)
 const isDeleteOptionVisible = ref(false)
@@ -52,10 +51,12 @@ const calendarOptions = ref({
     center: 'title',
     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
   },
-  weekends: props.weekends,
   dateClick: (info) => {
     selectedDate.value = info.dateStr
     emit('date-click', info.dateStr)
+  },
+  eventClick: (info) => {
+    emit('event-click', info.event)
   },
   eventDidMount: (info) => {
     info.el.addEventListener('contextmenu', (e) => {
@@ -65,6 +66,7 @@ const calendarOptions = ref({
   },
   eventRemove: async function (info) {
     const googleEventId = info.event.extendedProps.extendsProps?.id
+
     console.log(googleEventId)
     if (googleEventId) {
       try {
@@ -82,13 +84,29 @@ const calendarOptions = ref({
   },
   eventChange: async function (info) {
     const googleEventId = info.event.extendedProps.extendsProps?.id
+
+    const isAllDay = info.event.extendedProps.allDay
+    let start = info.event.start
+    let end = info.event.end
+
+    if (!end) {
+      if (isAllDay) {
+        end = new Date(start)
+      } else {
+        end = new Date(start.getTime() + 60 * 60 * 1000)
+      }
+    }
+
     if (googleEventId) {
       try {
         const requestData = {
           newSummary: info.event.title,
-          newStart: info.event.start ? info.event.start.toISOString() : null,
-          newEnd: info.event.end ? info.event.end.toISOString() : null
+          newDescription: info.event.extendedProps.description || '',
+          newStart: start,
+          newEnd: end,
+          allDay: isAllDay
         }
+        console.log('requestData: ', requestData)
 
         await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
           headers: {
@@ -97,6 +115,7 @@ const calendarOptions = ref({
         })
 
         console.log('Event successfully updated in Google Calendar.')
+        await fetchEvents()
       } catch (error) {
         console.error('Failed to update event in Google Calendar:', error)
       }
@@ -106,11 +125,26 @@ const calendarOptions = ref({
   },
   eventAdd: async function (info) {
     console.log('info:', info)
+    const isAllDay = info.event.allDay
+    let start = info.event.start
+    let end = info.event.end
+
+    if (!end) {
+      if (isAllDay) {
+        end = new Date(start)
+      } else {
+        end = new Date(start.getTime() + 60 * 60 * 1000)
+      }
+    }
+
     const newEvent = {
       newSummary: info.event.title,
-      newStart: info.event.start.toISOString(),
-      newEnd: info.event.end ? info.event.end.toISOString() : null
+      newDescription: info.event.extendedProps.description || '',
+      newStart: start,
+      newEnd: end,
+      allDay: isAllDay
     }
+    console.log('newEvent', newEvent)
 
     try {
       const response = await axios.post('http://localhost:8080/events', newEvent, {
@@ -120,9 +154,10 @@ const calendarOptions = ref({
       })
       const googleEventId = response.data.id
       console.log('Google Event ID:', googleEventId)
-      info.event.setExtendedProp('extendsProps', { id: googleEventId })
+      info.event.setExtendedProp('googleEventId', googleEventId)
 
       console.log('Event successfully added to Google Calendar.')
+      await fetchEvents()
     } catch (error) {
       console.error('Failed to add event to Google Calendar:', error)
       info.revert()
@@ -130,16 +165,6 @@ const calendarOptions = ref({
   },
   events: events.value
 })
-
-watch(
-  () => props.weekends,
-  (newValue) => {
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.setOption('weekends', newValue)
-    }
-  }
-)
 
 onMounted(() => {
   document.addEventListener('contextmenu', (e) => {
@@ -164,6 +189,10 @@ watch(events, (newEvents) => {
 })
 
 onMounted(async () => {
+  await fetchEvents()
+})
+
+const fetchEvents = async () => {
   try {
     const response = await axios.get('http://localhost:8080/events')
     let fetchedevents = []
@@ -177,7 +206,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to fetch events:', error)
   }
-})
+}
 
 const handleDocumentClick = (event) => {
   if (!event.target.closest('.custom-popover') && !event.target.closest('.fc-daygrid-day')) {
@@ -254,7 +283,8 @@ const addEvent = (event) => {
     const newEvent = {
       title: event.title,
       start: event.startDate,
-      end: event.endDate
+      end: event.endDate,
+      description: event.description
     }
 
     api.addEvent(newEvent)
@@ -272,28 +302,54 @@ const editEvent = (updatedEvent) => {
     const api = fullCalendar.value.getApi()
     const existingEvent = api.getEventById(updatedEvent.id)
 
-    console.log('Updating event:', updatedEvent)
-    console.log('Existing event:', existingEvent)
-
     if (existingEvent) {
+      let changesMade = false
+
       console.log('Before update:', {
         title: existingEvent.title,
         start: existingEvent.start,
-        end: existingEvent.end
+        end: existingEvent.end,
+        description: existingEvent.extendedProps.description,
+        allday: existingEvent.allDay
       })
 
-      existingEvent.setProp('title', updatedEvent.title)
-      existingEvent.setDates(updatedEvent.startDate, updatedEvent.endDate)
+      if (existingEvent.title !== updatedEvent.title) {
+        existingEvent.setProp('title', updatedEvent.title)
+        changesMade = true
+      }
 
-      console.log('After update:', {
-        title: existingEvent.title,
-        start: existingEvent.start,
-        end: existingEvent.end
-      })
+      if (
+        existingEvent.start !== updatedEvent.startDate ||
+        existingEvent.end !== updatedEvent.endDate
+      ) {
+        existingEvent.setDates(updatedEvent.startDate, updatedEvent.endDate)
+        changesMade = true
+      }
 
-      api.refetchEvents()
+      if (existingEvent.extendedProps.description !== updatedEvent.description) {
+        existingEvent.setExtendedProp('description', updatedEvent.description)
+        changesMade = true
+      }
 
-      console.log('Event updated successfully')
+      if (existingEvent.extendedProps.allDay !== updatedEvent.allDay) {
+        existingEvent.setExtendedProp('allDay', updatedEvent.allDay)
+        changesMade = true
+      }
+
+      if (changesMade) {
+        console.log('After update:', {
+          title: existingEvent.title,
+          start: existingEvent.start,
+          end: existingEvent.end,
+          description: existingEvent.extendedProps.description,
+          allday: existingEvent.extendedProps.allDay
+        })
+
+        console.log(existingEvent)
+        console.log('Event updated successfully')
+      } else {
+        console.log('No changes detected for event:', updatedEvent.id)
+      }
     } else {
       console.warn('Event not found:', updatedEvent.id)
     }
@@ -304,7 +360,7 @@ const editEvent = (updatedEvent) => {
 
 // format event data to match FullCalendar API
 const formattedEvent = (event) => {
-  const { summary, start, end, id } = event
+  const { summary, start, end, id, description } = event
   const hasDateTime = !!start.dateTime
 
   return hasDateTime
@@ -313,12 +369,14 @@ const formattedEvent = (event) => {
         title: summary,
         start: formattedDateTime(start.dateTime.value),
         end: formattedDateTime(end.dateTime.value),
+        description: description,
         extendsProps: { id }
       }
     : {
         id: id,
         title: summary,
         date: formattedDate(start.date.value),
+        description: description,
         extendsProps: { id }
       }
 }
@@ -332,17 +390,6 @@ const formattedDate = (timestamp) => {
 const formattedDateTime = (timestamp) => {
   return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss')
 }
-
-watch(
-  () => props.weekends,
-  (newValue) => {
-    console.log('Weekends prop changed:', newValue)
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.setOption('weekends', newValue)
-    }
-  }
-)
 
 defineExpose({ addEvent, editEvent })
 </script>

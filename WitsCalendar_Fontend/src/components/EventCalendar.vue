@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, markRaw } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -31,6 +31,9 @@ import listGridPlugin from '@fullcalendar/list'
 import interactionPlugin from '@fullcalendar/interaction'
 import axios from 'axios'
 import { format } from 'date-fns'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
+import _ from 'lodash'
 
 const emit = defineEmits(['date-click', 'edit-event', 'event-click'])
 const fullCalendar = ref(null)
@@ -41,6 +44,48 @@ const popoverY = ref(0)
 const selectedDate = ref('')
 const selectedEvent = ref(null)
 const events = ref([])
+
+const debouncedEventChange = _.debounce(async function (info) {
+  const googleEventId = info.event.extendedProps.extendsProps?.id
+
+  const isAllDay = info.event.extendedProps.allDay
+  let start = info.event.start
+  let end = info.event.end
+
+  if (!end) {
+    if (isAllDay) {
+      end = new Date(start)
+    } else {
+      end = new Date(start.getTime() + 60 * 60 * 1000)
+    }
+  }
+
+  if (googleEventId) {
+    try {
+      const requestData = {
+        newSummary: info.event.title,
+        newDescription: info.event.extendedProps.description || '',
+        newStart: start,
+        newEnd: end,
+        allDay: isAllDay
+      }
+      console.log('requestData: ', requestData)
+
+      await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Event successfully updated in Google Calendar.')
+      await fetchEvents()
+    } catch (error) {
+      console.error('Failed to update event in Google Calendar:', error)
+    }
+  } else {
+    console.warn('Google Event ID is not available.')
+  }
+}, 500)
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin, timeGridPlugin, listGridPlugin],
@@ -82,47 +127,8 @@ const calendarOptions = ref({
       console.warn('Google Event ID is not available.')
     }
   },
-  eventChange: async function (info) {
-    const googleEventId = info.event.extendedProps.extendsProps?.id
+  eventChange: debouncedEventChange,
 
-    const isAllDay = info.event.extendedProps.allDay
-    let start = info.event.start
-    let end = info.event.end
-
-    if (!end) {
-      if (isAllDay) {
-        end = new Date(start)
-      } else {
-        end = new Date(start.getTime() + 60 * 60 * 1000)
-      }
-    }
-
-    if (googleEventId) {
-      try {
-        const requestData = {
-          newSummary: info.event.title,
-          newDescription: info.event.extendedProps.description || '',
-          newStart: start,
-          newEnd: end,
-          allDay: isAllDay
-        }
-        console.log('requestData: ', requestData)
-
-        await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-
-        console.log('Event successfully updated in Google Calendar.')
-        await fetchEvents()
-      } catch (error) {
-        console.error('Failed to update event in Google Calendar:', error)
-      }
-    } else {
-      console.warn('Google Event ID is not available.')
-    }
-  },
   eventAdd: async function (info) {
     console.log('info:', info)
     const isAllDay = info.event.allDay
@@ -147,19 +153,20 @@ const calendarOptions = ref({
     console.log('newEvent', newEvent)
 
     try {
-      const response = await axios.post('http://localhost:8080/events', newEvent, {
+      await axios.post('http://localhost:8080/events', newEvent, {
         headers: {
           'Content-Type': 'application/json'
         }
       })
-      const googleEventId = response.data.id
-      console.log('Google Event ID:', googleEventId)
-      info.event.setExtendedProp('googleEventId', googleEventId)
 
       console.log('Event successfully added to Google Calendar.')
       await fetchEvents()
     } catch (error) {
-      console.error('Failed to add event to Google Calendar:', error)
+      ElMessage({
+        message: '事件新增失敗，請重試。',
+        type: 'error',
+        duration: 3000
+      })
       info.revert()
     }
   },
@@ -258,12 +265,27 @@ const handleContextMenuForEvent = (e, event) => {
 
 const deleteSelectedEvent = () => {
   if (selectedEvent.value) {
-    const confirmDelete = confirm('確定要刪除此事件嗎？')
-    if (confirmDelete) {
-      selectedEvent.value.remove()
-      isDeleteOptionVisible.value = false
-      selectedEvent.value = null
-    }
+    isDeleteOptionVisible.value = false
+    ElMessageBox.confirm('是否確定要刪除該事件？', '警告', {
+      type: 'warning',
+      icon: markRaw(Delete)
+    })
+      .then(() => {
+        selectedEvent.value.remove()
+
+        isPopoverVisible.value = false
+        selectedEvent.value = null
+        ElMessage({
+          type: 'success',
+          message: '刪除成功！'
+        })
+      })
+      .catch(() => {
+        ElMessage({
+          type: 'info',
+          message: '已取消刪除'
+        })
+      })
   }
 }
 
@@ -289,6 +311,11 @@ const addEvent = (event) => {
 
     api.addEvent(newEvent)
     console.log('Added event:', newEvent)
+
+    ElMessage({
+      type: 'success',
+      message: '事件已成功添加。'
+    })
   }
 }
 

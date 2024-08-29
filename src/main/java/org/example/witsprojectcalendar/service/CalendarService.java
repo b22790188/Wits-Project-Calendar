@@ -28,7 +28,6 @@ import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -81,14 +80,12 @@ public class CalendarService {
                 .setDescription(request.getNewDescription());
 
         if (request.isAllDay()) {
-            log.info("insert All day event");
             LocalDate startDate = parseDate(request.getNewStart());
             LocalDate endDate = parseDate(request.getNewEnd());
 
             event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
                     .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
         } else {
-            log.info("insert Normal event");
             Instant startInstant = parseDateTime(request.getNewStart());
             Instant endInstant = parseDateTime(request.getNewEnd());
 
@@ -132,14 +129,12 @@ public class CalendarService {
                 .setDescription(request.getNewDescription());
 
         if (request.isAllDay()) {
-            log.info("update All day event");
             LocalDate startDate = parseDate(request.getNewStart());
             LocalDate endDate = parseDate(request.getNewEnd());
 
             event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
                     .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
         } else {
-            log.info("update Normal event");
             Instant startInstant = parseDateTime(request.getNewStart());
             Instant endInstant = parseDateTime(request.getNewEnd());
 

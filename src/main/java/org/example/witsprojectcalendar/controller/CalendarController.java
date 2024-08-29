@@ -27,16 +27,23 @@ public class CalendarController {
 
     @PostMapping("/events")
     public ResponseEntity<?> insertEvents(@RequestBody InsertEventRequest request) throws GeneralSecurityException, IOException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String accessToken = authentication.getCredentials().toString();
+
         log.info("Received event creation request: {}", request);
-        Event createdEvent = calendarService.insertEvent(request);
+
+        Event createdEvent = calendarService.insertEvent(accessToken, request);
         return ResponseEntity.ok(createdEvent);
     }
 
     @DeleteMapping("/events")
     public ResponseEntity<?> deleteEvents(@RequestParam String eventId) throws GeneralSecurityException, IOException {
-        boolean isDeleted = calendarService.deleteEvent(eventId);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String accessToken = authentication.getCredentials().toString();
+
+        boolean isDeleted = calendarService.deleteEvent(accessToken, eventId);
         return isDeleted ? ResponseEntity.noContent().build()
-                : ResponseEntity.badRequest().body(new ErrorResponseDTO("Delete event failed"));
+            : ResponseEntity.badRequest().body(new ErrorResponseDTO("Delete event failed"));
     }
 
     @GetMapping("/events")
@@ -44,15 +51,16 @@ public class CalendarController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String accessToken = authentication.getCredentials().toString();
 
-        log.info(accessToken);
-
-        return ResponseEntity.ok(calendarService.getEvents());
+        return ResponseEntity.ok(calendarService.getEvents(accessToken));
     }
 
     @PutMapping("/events/{eventId}")
     public ResponseEntity<?> updateEvent(@PathVariable("eventId") String eventId, @RequestBody UpdateEventRequest request) throws IOException {
-        Event updateEvent = calendarService.updateEvent(eventId, request);
-        log.info("Updated event: {}", updateEvent);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String accessToken = authentication.getCredentials().toString();
+
+        Event updateEvent = calendarService.updateEvent(accessToken, eventId, request);
+
         return ResponseEntity.ok(updateEvent);
     }
 

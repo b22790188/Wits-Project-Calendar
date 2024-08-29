@@ -1,5 +1,5 @@
 <template>
-  <div @contextmenu.prevent="handleContextMenu" style="height: 100vh; width: 100%">
+  <div style="height: 100vh; width: 100%">
     <FullCalendar ref="fullCalendar" :options="calendarOptions" />
 
     <div
@@ -7,13 +7,23 @@
       class="custom-popover"
       :style="{ left: `${popoverX}px`, top: `${popoverY}px` }"
     >
-      <div @click="showAddEventDialog">新增事件</div>
+      <div class="popover-content">
+        <el-button v-if="isDeleteOptionVisible" type="danger" @click="deleteSelectedEvent">
+          刪除事件
+        </el-button>
+        <el-button v-if="isDeleteOptionVisible" type="warning" @click="showEditEventDialog">
+          修改事件
+        </el-button>
+        <el-button v-if="!isDeleteOptionVisible" type="primary" @click="showAddEventDialog">
+          新增事件
+        </el-button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, markRaw } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -21,15 +31,61 @@ import listGridPlugin from '@fullcalendar/list'
 import interactionPlugin from '@fullcalendar/interaction'
 import axios from 'axios'
 import { format } from 'date-fns'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
+import _ from 'lodash'
 
-const emit = defineEmits(['date-click'])
-const props = defineProps(['weekends'])
+const emit = defineEmits(['date-click', 'edit-event', 'event-click'])
 const fullCalendar = ref(null)
 const isPopoverVisible = ref(false)
+const isDeleteOptionVisible = ref(false)
 const popoverX = ref(0)
 const popoverY = ref(0)
 const selectedDate = ref('')
+const selectedEvent = ref(null)
 const events = ref([])
+
+const debouncedEventChange = _.debounce(async function (info) {
+  const googleEventId = info.event.extendedProps.extendsProps?.id
+
+  const isAllDay = info.event.extendedProps.allDay
+  let start = info.event.start
+  let end = info.event.end
+
+  if (!end) {
+    if (isAllDay) {
+      end = new Date(start)
+    } else {
+      end = new Date(start.getTime() + 60 * 60 * 1000)
+    }
+  }
+
+  if (googleEventId) {
+    try {
+      const requestData = {
+        newSummary: info.event.title,
+        newDescription: info.event.extendedProps.description || '',
+        newStart: start,
+        newEnd: end,
+        allDay: isAllDay
+      }
+      console.log('requestData: ', requestData)
+
+      await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Event successfully updated in Google Calendar.')
+      await fetchEvents()
+    } catch (error) {
+      console.error('Failed to update event in Google Calendar:', error)
+    }
+  } else {
+    console.warn('Google Event ID is not available.')
+  }
+}, 500)
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, interactionPlugin, timeGridPlugin, listGridPlugin],
@@ -40,30 +96,97 @@ const calendarOptions = ref({
     center: 'title',
     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
   },
-  weekends: props.weekends,
   dateClick: (info) => {
-    console.log(info)
     selectedDate.value = info.dateStr
     emit('date-click', info.dateStr)
   },
+  eventClick: (info) => {
+    emit('event-click', info.event)
+  },
+  eventDidMount: (info) => {
+    info.el.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      handleContextMenuForEvent(e, info.event)
+    })
+  },
+  eventRemove: async function (info) {
+    const googleEventId = info.event.extendedProps.extendsProps?.id
 
-  events: []
-})
-
-watch(
-  () => props.weekends,
-  (newValue) => {
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.setOption('weekends', newValue)
+    console.log(googleEventId)
+    if (googleEventId) {
+      try {
+        await axios.delete('http://localhost:8080/events', {
+          params: { eventId: googleEventId }
+        })
+        console.log('Event successfully deleted from Google Calendar.')
+      } catch (error) {
+        console.error('Failed to delete event from Google Calendar:', error)
+        info.revert()
+      }
+    } else {
+      console.warn('Google Event ID is not available.')
     }
-  }
-)
+  },
+  eventChange: debouncedEventChange,
+
+  eventAdd: async function (info) {
+    console.log('info:', info)
+    const isAllDay = info.event.allDay
+    let start = info.event.start
+    let end = info.event.end
+
+    if (!end) {
+      if (isAllDay) {
+        end = new Date(start)
+      } else {
+        end = new Date(start.getTime() + 60 * 60 * 1000)
+      }
+    }
+
+    const newEvent = {
+      newSummary: info.event.title,
+      newDescription: info.event.extendedProps.description || '',
+      newStart: start,
+      newEnd: end,
+      allDay: isAllDay
+    }
+    console.log('newEvent', newEvent)
+
+    try {
+      await axios.post('http://localhost:8080/events', newEvent, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Event successfully added to Google Calendar.')
+      await fetchEvents()
+    } catch (error) {
+      ElMessage({
+        message: '事件新增失敗，請重試。',
+        type: 'error',
+        duration: 3000
+      })
+      info.revert()
+    }
+  },
+  events: events.value
+})
 
 onMounted(() => {
-  fullCalendar.value.$el.addEventListener('contextmenu', handleContextMenu)
+  document.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('.fc-event')) {
+      handleContextMenu(e)
+    }
+  })
   document.addEventListener('click', handleDocumentClick)
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('contextmenu', handleContextMenu)
+  document.removeEventListener('click', handleDocumentClick)
+})
+
 watch(events, (newEvents) => {
   if (fullCalendar.value) {
     const api = fullCalendar.value.getApi()
@@ -73,7 +196,10 @@ watch(events, (newEvents) => {
 })
 
 onMounted(async () => {
-  console.log('Calendar mounted')
+  await fetchEvents()
+})
+
+const fetchEvents = async () => {
   try {
     const response = await axios.get('http://localhost:8080/events')
     let fetchedevents = []
@@ -83,19 +209,11 @@ onMounted(async () => {
       fetchedevents.push(formattedEvent(event))
     }
 
-    console.log('Fetched events:', events)
     events.value = fetchedevents
   } catch (error) {
     console.error('Failed to fetch events:', error)
   }
-})
-
-onBeforeUnmount(() => {
-  if (fullCalendar.value) {
-    fullCalendar.value.$el.removeEventListener('contextmenu', handleContextMenu)
-  }
-  document.removeEventListener('click', handleDocumentClick)
-})
+}
 
 const handleDocumentClick = (event) => {
   if (!event.target.closest('.custom-popover') && !event.target.closest('.fc-daygrid-day')) {
@@ -108,7 +226,8 @@ const handleContextMenu = (event) => {
   popoverX.value = event.clientX
   popoverY.value = event.clientY
   isPopoverVisible.value = true
-
+  isDeleteOptionVisible.value = false
+  selectedDate.value = null
   const hitEl = document.elementFromPoint(event.clientX, event.clientY)
 
   if (hitEl && (hitEl.classList.contains('fc-daygrid-day') || hitEl.closest('.fc-daygrid-day'))) {
@@ -118,7 +237,6 @@ const handleContextMenu = (event) => {
     const dateStr = dateEl.getAttribute('data-date')
     if (dateStr) {
       selectedDate.value = dateStr
-      isPopoverVisible.value = true
     } else {
       isPopoverVisible.value = false
       console.warn('無法從點擊位置獲取日期')
@@ -129,34 +247,165 @@ const handleContextMenu = (event) => {
   }
 }
 
+const handleContextMenuForEvent = (e, event) => {
+  e.preventDefault()
+
+  popoverX.value = e.clientX
+  popoverY.value = e.clientY
+  isPopoverVisible.value = true
+
+  if (event) {
+    isDeleteOptionVisible.value = true
+    selectedEvent.value = event
+  } else {
+    isDeleteOptionVisible.value = false
+    selectedEvent.value = null
+  }
+}
+
+const deleteSelectedEvent = () => {
+  if (selectedEvent.value) {
+    isDeleteOptionVisible.value = false
+    ElMessageBox.confirm('是否確定要刪除該事件？', '警告', {
+      type: 'warning',
+      icon: markRaw(Delete)
+    })
+      .then(() => {
+        selectedEvent.value.remove()
+
+        isPopoverVisible.value = false
+        selectedEvent.value = null
+        ElMessage({
+          type: 'success',
+          message: '刪除成功！'
+        })
+      })
+      .catch(() => {
+        ElMessage({
+          type: 'info',
+          message: '已取消刪除'
+        })
+      })
+  }
+}
+
 const showAddEventDialog = () => {
   isPopoverVisible.value = false
   emit('date-click', selectedDate.value)
 }
 
+const showEditEventDialog = () => {
+  isPopoverVisible.value = false
+  emit('edit-event', selectedEvent.value)
+}
+
 const addEvent = (event) => {
   if (fullCalendar.value) {
     const api = fullCalendar.value.getApi()
-    api.addEvent(event)
+    const newEvent = {
+      title: event.title,
+      start: event.startDate,
+      end: event.endDate,
+      description: event.description
+    }
+
+    api.addEvent(newEvent)
+    console.log('Added event:', newEvent)
+
+    ElMessage({
+      type: 'success',
+      message: '事件已成功添加。'
+    })
+  }
+}
+
+const editEvent = (updatedEvent) => {
+  if (!updatedEvent.id) {
+    console.error('No event ID provided for update.')
+    return
+  }
+
+  if (fullCalendar.value) {
+    const api = fullCalendar.value.getApi()
+    const existingEvent = api.getEventById(updatedEvent.id)
+
+    if (existingEvent) {
+      let changesMade = false
+
+      console.log('Before update:', {
+        title: existingEvent.title,
+        start: existingEvent.start,
+        end: existingEvent.end,
+        description: existingEvent.extendedProps.description,
+        allday: existingEvent.allDay
+      })
+
+      if (existingEvent.title !== updatedEvent.title) {
+        existingEvent.setProp('title', updatedEvent.title)
+        changesMade = true
+      }
+
+      if (
+        existingEvent.start !== updatedEvent.startDate ||
+        existingEvent.end !== updatedEvent.endDate
+      ) {
+        existingEvent.setDates(updatedEvent.startDate, updatedEvent.endDate)
+        changesMade = true
+      }
+
+      if (existingEvent.extendedProps.description !== updatedEvent.description) {
+        existingEvent.setExtendedProp('description', updatedEvent.description)
+        changesMade = true
+      }
+
+      if (existingEvent.extendedProps.allDay !== updatedEvent.allDay) {
+        existingEvent.setExtendedProp('allDay', updatedEvent.allDay)
+        changesMade = true
+      }
+
+      if (changesMade) {
+        console.log('After update:', {
+          title: existingEvent.title,
+          start: existingEvent.start,
+          end: existingEvent.end,
+          description: existingEvent.extendedProps.description,
+          allday: existingEvent.extendedProps.allDay
+        })
+
+        console.log(existingEvent)
+        console.log('Event updated successfully')
+      } else {
+        console.log('No changes detected for event:', updatedEvent.id)
+      }
+    } else {
+      console.warn('Event not found:', updatedEvent.id)
+    }
+  } else {
+    console.error('Calendar reference not found')
   }
 }
 
 // format event data to match FullCalendar API
 const formattedEvent = (event) => {
-  const { summary, start, end } = event
+  const { summary, start, end, id, description } = event
   const hasDateTime = !!start.dateTime
 
   return hasDateTime
     ? {
+        id: id,
         title: summary,
         start: formattedDateTime(start.dateTime.value),
-        end: formattedDateTime(end.dateTime.value)
+        end: formattedDateTime(end.dateTime.value),
+        description: description,
+        extendsProps: { id }
       }
     : {
+        id: id,
         title: summary,
-        date: formattedDate(start.date.value)
+        date: formattedDate(start.date.value),
+        description: description,
+        extendsProps: { id }
       }
-
 }
 
 // format date to match FullCalendar API
@@ -169,29 +418,31 @@ const formattedDateTime = (timestamp) => {
   return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss')
 }
 
-watch(
-  () => props.weekends,
-  (newValue) => {
-    console.log('Weekends prop changed:', newValue)
-    if (fullCalendar.value) {
-      const api = fullCalendar.value.getApi()
-      api.setOption('weekends', newValue)
-    }
-  }
-)
-
-defineExpose({ addEvent })
+defineExpose({ addEvent, editEvent })
 </script>
 
 <style scoped>
 .custom-popover {
   position: fixed;
-  width: 65px;
+  width: 80px;
   background-color: white;
   border: 1px solid #ccc;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   padding: 10px;
   border-radius: 4px;
+  flex-direction: column;
+}
+
+.popover-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.el-button {
+  width: 100%;
+  /* @important == override element plus default css */
+  margin-left: 0px !important;
 }
 </style>

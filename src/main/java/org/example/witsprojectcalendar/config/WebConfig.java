@@ -14,11 +14,11 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/*")
+        registry.addMapping("/**")
 
             .allowedOrigins(allowedOrigins) // Vue Server URL
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .allowedHeaders("")
+            .allowedHeaders("*")
             .allowCredentials(true);
     }
 }

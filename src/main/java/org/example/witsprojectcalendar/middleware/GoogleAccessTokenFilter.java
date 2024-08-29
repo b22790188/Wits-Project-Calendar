@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -56,27 +55,6 @@ public class GoogleAccessTokenFilter extends OncePerRequestFilter {
         ResponseEntity<GoogleTokenInfo> response = restTemplate.getForEntity(url, GoogleTokenInfo.class);
 
         return response.getBody();
-    }
-}
-
-
-class GoogleAccessToken extends AbstractAuthenticationToken {
-    private final String accessToken;
-
-    public GoogleAccessToken(String accessToken) {
-        super(null);
-        this.accessToken = accessToken;
-        setAuthenticated(true);
-    }
-
-    @Override
-    public Object getCredentials() {
-        return accessToken;
-    }
-
-    @Override
-    public Object getPrincipal() {
-        return accessToken;
     }
 }
 

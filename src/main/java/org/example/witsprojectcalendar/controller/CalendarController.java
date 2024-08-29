@@ -1,10 +1,13 @@
 package org.example.witsprojectcalendar.controller;
 
 import com.google.api.services.calendar.model.Event;
+import lombok.extern.log4j.Log4j2;
 import org.example.witsprojectcalendar.data.dto.ErrorResponseDTO;
 import org.example.witsprojectcalendar.data.dto.UpdateEventRequest;
 import org.example.witsprojectcalendar.service.CalendarService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +15,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 @Controller
+@Log4j2
 public class CalendarController {
 
     private final CalendarService calendarService;
@@ -36,6 +40,11 @@ public class CalendarController {
 
     @GetMapping("/events")
     public ResponseEntity<?> getEvents() throws IOException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String accessToken = authentication.getCredentials().toString();
+
+        log.info(accessToken);
+
         return ResponseEntity.ok(calendarService.getEvents());
     }
 

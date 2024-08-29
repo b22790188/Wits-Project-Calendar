@@ -1,5 +1,6 @@
 package org.example.witsprojectcalendar.service;
 
+import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -140,5 +141,34 @@ public class CalendarService {
         Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         //returns an authorized Credential object.
         return credential;
+    }
+
+
+    public List<Event> testCalendarService(String accessToken) throws IOException, GeneralSecurityException {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+        Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod()).setAccessToken(accessToken);
+
+        Calendar testService =
+            new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+
+        DateTime now = new DateTime(System.currentTimeMillis());
+        Events events = testService.events().list("primary").setMaxResults(10).setTimeMin(now).setOrderBy("startTime").setSingleEvents(true).execute();
+        List<Event> items = events.getItems();
+        if (items.isEmpty()) {
+            System.out.println("No upcoming events found.");
+        } else {
+            System.out.println("Upcoming events");
+            for (Event event : items) {
+                DateTime start = event.getStart().getDateTime();
+                if (start == null) {
+                    start = event.getStart().getDate();
+                }
+                System.out.printf("%s (%s)\n", event.getSummary(), start);
+            }
+        }
+        return items;
     }
 }

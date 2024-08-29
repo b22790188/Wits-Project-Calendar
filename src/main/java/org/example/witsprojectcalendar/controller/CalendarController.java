@@ -45,4 +45,8 @@ public class CalendarController {
         return ResponseEntity.ok(updateEvent);
     }
 
+    @PostMapping("/testLogin")
+    public ResponseEntity<?> testAccessToken(@RequestParam String accessToken) throws IOException, GeneralSecurityException {
+        return ResponseEntity.ok(calendarService.testCalendarService(accessToken));
+    }
 }

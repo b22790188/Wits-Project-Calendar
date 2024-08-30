@@ -45,6 +45,9 @@ const selectedDate = ref('')
 const selectedEvent = ref(null)
 const events = ref([])
 
+let viewStart
+let viewEnd
+
 const debouncedEventChange = _.debounce(async function (info) {
   const googleEventId = info.event.extendedProps.extendsProps?.id
 
@@ -104,9 +107,12 @@ const calendarOptions = ref({
       endDate: info.end.toISOString()
     }
 
+    viewStart = info.start.toISOString()
+    viewEnd = info.end.toISOString()
+
     try {
       const response = await axios.get('http://localhost:8080/events', {
-        params: {  
+        params: {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate
         },
@@ -130,8 +136,17 @@ const calendarOptions = ref({
   },
 
   dateClick: (info) => {
-    selectedDate.value = info.dateStr
-    emit('date-click', info.dateStr)
+    try {
+      isPopoverVisible.value = false
+      selectedDate.value = info.dateStr
+      emit('date-click', info.dateStr)
+    } catch (error) {
+      ElMessage({
+        type: 'warning',
+        grouping: true,
+        message: '請點擊 all-day 區域以新增事件'
+      })
+    }
   },
   eventClick: (info) => {
     emit('event-click', info.event)
@@ -145,7 +160,6 @@ const calendarOptions = ref({
   eventRemove: async function (info) {
     const googleEventId = info.event.extendedProps.extendsProps?.id
 
-    console.log(googleEventId)
     if (googleEventId) {
       try {
         await axios.delete('http://localhost:8080/events', {
@@ -166,7 +180,6 @@ const calendarOptions = ref({
   eventChange: debouncedEventChange,
 
   eventAdd: async function (info) {
-    console.log('info:', info)
     const isAllDay = info.event.allDay
     let start = info.event.start
     let end = info.event.end
@@ -186,7 +199,6 @@ const calendarOptions = ref({
       newEnd: end,
       allDay: isAllDay
     }
-    console.log('newEvent', newEvent)
 
     try {
       await axios.post('http://localhost:8080/events', newEvent, {
@@ -196,7 +208,10 @@ const calendarOptions = ref({
         }
       })
 
-      console.log('Event successfully added to Google Calendar.')
+      ElMessage({
+        type: 'success',
+        message: '事件已成功添加。'
+      })
       await fetchEvents()
     } catch (error) {
       ElMessage({
@@ -232,15 +247,24 @@ watch(events, (newEvents) => {
   }
 })
 
-
-
 const fetchEvents = async () => {
+  const dateRange = {
+    startDate: viewStart,
+    endDate: viewEnd
+  }
+
   try {
     const response = await axios.get('http://localhost:8080/events', {
+      params: {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      },
       headers: {
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('authToken')}`
       }
     })
+
     let fetchedevents = []
 
     for (const event of response.data) {
@@ -278,11 +302,14 @@ const handleContextMenu = (event) => {
       selectedDate.value = dateStr
     } else {
       isPopoverVisible.value = false
-      console.warn('無法從點擊位置獲取日期')
     }
   } else {
+    ElMessage({
+      type: 'warning',
+      grouping: true,
+      message: '請點擊 all-day 區域以新增事件'
+    })
     isPopoverVisible.value = false
-    console.warn('無法從點擊位置獲取日期')
   }
 }
 
@@ -345,16 +372,12 @@ const addEvent = (event) => {
       title: event.title,
       start: event.startDate,
       end: event.endDate,
+      allday: event.allDay,
       description: event.description
     }
 
     api.addEvent(newEvent)
     console.log('Added event:', newEvent)
-
-    ElMessage({
-      type: 'success',
-      message: '事件已成功添加。'
-    })
   }
 }
 
@@ -410,17 +433,30 @@ const editEvent = (updatedEvent) => {
           description: existingEvent.extendedProps.description,
           allday: existingEvent.extendedProps.allDay
         })
-
-        console.log(existingEvent)
-        console.log('Event updated successfully')
+        ElMessage({
+          type: 'success',
+          message: '修改事件成功'
+        })
       } else {
-        console.log('No changes detected for event:', updatedEvent.id)
+        ElMessage({
+          type: 'error',
+          grouping: true,
+          message: '請稍候再重試修改'
+        })
       }
     } else {
-      console.warn('Event not found:', updatedEvent.id)
+      ElMessage({
+        type: 'error',
+        grouping: true,
+        message: '請稍候再重試修改'
+      })
     }
   } else {
-    console.error('Calendar reference not found')
+    ElMessage({
+      type: 'error',
+      grouping: true,
+      message: '請稍候再重試修改'
+    })
   }
 }
 
@@ -436,13 +472,16 @@ const formattedEvent = (event) => {
         start: formattedDateTime(start.dateTime.value),
         end: formattedDateTime(end.dateTime.value),
         description: description,
+        allDay: event.allDay || false,
         extendsProps: { id }
       }
     : {
         id: id,
         title: summary,
-        date: formattedDate(start.date.value),
+        start: formattedDate(start.date.value),
+        end: formattedDate(end.date.value),
         description: description,
+        allDay: true,
         extendsProps: { id }
       }
 }

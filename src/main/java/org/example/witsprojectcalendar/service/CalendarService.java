@@ -124,7 +124,7 @@ public class CalendarService {
 
         if (request.isAllDay()) {
             LocalDate startDate = parseDate(request.getNewStart());
-            LocalDate endDate = parseDate(request.getNewEnd());
+            LocalDate endDate = parseDate(request.getNewEnd()).plusDays(1);
 
             event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
                 .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
@@ -137,7 +137,6 @@ public class CalendarService {
         }
 
         Event createdEvent = service.events().insert("primary", event).execute();
-        log.info("Event created: {} ({})", createdEvent.getSummary(), createdEvent.getId());
         return createdEvent;
     }
 
@@ -168,7 +167,6 @@ public class CalendarService {
 
     public Event updateEvent(String accessToken, String eventId, UpdateEventRequest request) throws IOException {
         Calendar service = getCalendarService(accessToken);
-        log.info("Attempting to update event with ID: {}", eventId);
 
 
         Event event = new Event()
@@ -178,7 +176,6 @@ public class CalendarService {
         if (request.isAllDay()) {
             LocalDate startDate = parseDate(request.getNewStart());
             LocalDate endDate = parseDate(request.getNewEnd());
-
             event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
                 .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));
         } else {
@@ -190,7 +187,6 @@ public class CalendarService {
         }
 
         Event updatedEvent = service.events().update("primary", eventId, event).execute();
-        log.info("Event updated successfully: {} ({})", updatedEvent.getSummary(), updatedEvent.getUpdated());
         return updatedEvent;
     }
 

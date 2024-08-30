@@ -73,7 +73,8 @@ const debouncedEventChange = _.debounce(async function (info) {
 
       await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       })
 
@@ -125,7 +126,10 @@ const calendarOptions = ref({
     if (googleEventId) {
       try {
         await axios.delete('http://localhost:8080/events', {
-          params: { eventId: googleEventId }
+          params: { eventId: googleEventId },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`
+          }
         })
         console.log('Event successfully deleted from Google Calendar.')
       } catch (error) {
@@ -164,7 +168,8 @@ const calendarOptions = ref({
     try {
       await axios.post('http://localhost:8080/events', newEvent, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       })
 
@@ -214,7 +219,11 @@ onMounted(async () => {
 
 const fetchEvents = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/events')
+    const response = await axios.get('http://localhost:8080/events', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+      }
+    })
     let fetchedevents = []
 
     for (const event of response.data) {

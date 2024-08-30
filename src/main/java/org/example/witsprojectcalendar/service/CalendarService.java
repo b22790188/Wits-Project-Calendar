@@ -32,6 +32,7 @@ import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
@@ -141,21 +142,25 @@ public class CalendarService {
     }
 
 
-    public List<Event> getEvents(String accessToken) throws IOException {
+    public List<Event> getEvents(String accessToken, String startDate, String endDate) throws IOException {
         Calendar service = getCalendarService(accessToken);
-        DateTime now = new DateTime(System.currentTimeMillis());
-        Events events = service.events().list("primary").setMaxResults(10).setTimeMin(now).setOrderBy("startTime").setSingleEvents(true).execute();
+
+        DateTime minTime = convertUtcToTimezone(startDate, "Asia/Taipei");
+        DateTime maxTime = convertUtcToTimezone(endDate, "Asia/Taipei");
+
+        Events events = service.events().list("primary")
+            .setTimeMin(minTime)
+            .setTimeMax(maxTime)
+            .setOrderBy("startTime").setSingleEvents(true).execute();
         List<Event> items = events.getItems();
         if (items.isEmpty()) {
             System.out.println("No upcoming events found.");
         } else {
-            System.out.println("Upcoming events");
             for (Event event : items) {
                 DateTime start = event.getStart().getDateTime();
                 if (start == null) {
                     start = event.getStart().getDate();
                 }
-                System.out.printf("%s (%s)\n", event.getSummary(), start);
             }
         }
         return items;
@@ -229,6 +234,18 @@ public class CalendarService {
 
     private Instant parseDateTime(String dateTimeString) {
         return Instant.parse(dateTimeString);
+    }
+
+    private DateTime convertUtcToTimezone(String utcDateTimeString, String targetTimezone) {
+        Instant instant = Instant.parse(utcDateTimeString);
+
+        ZonedDateTime zonedDateTime = instant.atZone(ZoneId.of(targetTimezone));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+        String dateTimeString = zonedDateTime.format(formatter);
+
+        return new DateTime(dateTimeString);
     }
 
     public List<Event> testCalendarService(String accessToken) throws IOException, GeneralSecurityException {

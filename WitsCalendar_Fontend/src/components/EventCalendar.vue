@@ -97,8 +97,17 @@ const calendarOptions = ref({
     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
   },
   dateClick: (info) => {
-    selectedDate.value = info.dateStr
-    emit('date-click', info.dateStr)
+    try {
+      isPopoverVisible.value = false
+      selectedDate.value = info.dateStr
+      emit('date-click', info.dateStr)
+    } catch (error) {
+      ElMessage({
+        type: 'warning',
+        grouping: true,
+        message: '請點擊 all-day 區域以新增事件'
+      })
+    }
   },
   eventClick: (info) => {
     emit('event-click', info.event)
@@ -160,6 +169,10 @@ const calendarOptions = ref({
       })
 
       console.log('Event successfully added to Google Calendar.')
+      ElMessage({
+        type: 'success',
+        message: '事件已成功添加。'
+      })
       await fetchEvents()
     } catch (error) {
       ElMessage({
@@ -239,11 +252,14 @@ const handleContextMenu = (event) => {
       selectedDate.value = dateStr
     } else {
       isPopoverVisible.value = false
-      console.warn('無法從點擊位置獲取日期')
     }
   } else {
+    ElMessage({
+      type: 'warning',
+      grouping: true,
+      message: '請點擊 all-day 區域以新增事件'
+    })
     isPopoverVisible.value = false
-    console.warn('無法從點擊位置獲取日期')
   }
 }
 
@@ -311,11 +327,6 @@ const addEvent = (event) => {
 
     api.addEvent(newEvent)
     console.log('Added event:', newEvent)
-
-    ElMessage({
-      type: 'success',
-      message: '事件已成功添加。'
-    })
   }
 }
 

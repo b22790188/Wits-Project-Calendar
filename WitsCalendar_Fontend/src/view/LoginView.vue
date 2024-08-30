@@ -1,13 +1,21 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { googleTokenLogin } from 'vue3-google-login'
+import { googleSdkLoaded } from 'vue3-google-login'
 
 const router = useRouter()
 
 const login = () => {
-  googleTokenLogin().then((res) => {
-    localStorage.setItem('authToken', res.access_token)
-    router.push('/calendar')
+  googleSdkLoaded((google) => {
+    google.accounts.oauth2
+      .initTokenClient({
+        client_id: '402282197504-i03vqslflc0nbv4ttobahhm36c20qlma.apps.googleusercontent.com',
+        scope: 'email profile openid https://www.googleapis.com/auth/calendar',
+        callback: (res) => {
+          localStorage.setItem('authToken', res.access_token)
+          router.push('/calendar')
+        }
+      })
+      .requestAccessToken()
   })
 }
 </script>

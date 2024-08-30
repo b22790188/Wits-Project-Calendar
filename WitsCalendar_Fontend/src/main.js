@@ -12,7 +12,7 @@ app.use(ElementPlus)
 app.use(router)
 
 app.use(vue3GoogleLogin, {
-  clientId: '833567069700-ngh0neuifrrq1tdeul96maf7sr59rhh3.apps.googleusercontent.com'
+  clientId: '402282197504-i03vqslflc0nbv4ttobahhm36c20qlma.apps.googleusercontent.com'
 })
 
 app.mount('#app')

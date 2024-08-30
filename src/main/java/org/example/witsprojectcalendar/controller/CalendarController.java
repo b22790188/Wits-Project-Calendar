@@ -47,11 +47,11 @@ public class CalendarController {
     }
 
     @GetMapping("/events")
-    public ResponseEntity<?> getEvents() throws IOException {
+    public ResponseEntity<?> getEvents(@RequestParam String startDate, @RequestParam String endDate) throws IOException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String accessToken = authentication.getCredentials().toString();
 
-        return ResponseEntity.ok(calendarService.getEvents(accessToken));
+        return ResponseEntity.ok(calendarService.getEvents(accessToken, startDate, endDate));
     }
 
     @PutMapping("/events/{eventId}")

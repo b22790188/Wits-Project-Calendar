@@ -97,6 +97,38 @@ const calendarOptions = ref({
     center: 'title',
     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
   },
+
+  datesSet: async function (info) {
+    const dateRange = {
+      startDate: info.start.toISOString(),
+      endDate: info.end.toISOString()
+    }
+
+    try {
+      const response = await axios.get('http://localhost:8080/events', {
+        params: {  
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate
+        },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+
+      let fetchedevents = []
+
+      for (const event of response.data) {
+        console.log(event)
+        fetchedevents.push(formattedEvent(event))
+      }
+
+      events.value = fetchedevents
+    } catch (error) {
+      console.error('Failed to fetch events:', error)
+    }
+  },
+
   dateClick: (info) => {
     try {
       isPopoverVisible.value = false
@@ -209,9 +241,7 @@ watch(events, (newEvents) => {
   }
 })
 
-onMounted(async () => {
-  await fetchEvents()
-})
+
 
 const fetchEvents = async () => {
   try {

@@ -45,6 +45,9 @@ const selectedDate = ref('')
 const selectedEvent = ref(null)
 const events = ref([])
 
+let viewStart
+let viewEnd
+
 const debouncedEventChange = _.debounce(async function (info) {
   const googleEventId = info.event.extendedProps.extendsProps?.id
 
@@ -104,9 +107,12 @@ const calendarOptions = ref({
       endDate: info.end.toISOString()
     }
 
+    viewStart = info.start.toISOString()
+    viewEnd = info.end.toISOString()
+
     try {
       const response = await axios.get('http://localhost:8080/events', {
-        params: {  
+        params: {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate
         },
@@ -241,15 +247,24 @@ watch(events, (newEvents) => {
   }
 })
 
-
-
 const fetchEvents = async () => {
+  const dateRange = {
+    startDate: viewStart,
+    endDate: viewEnd
+  }
+
   try {
     const response = await axios.get('http://localhost:8080/events', {
+      params: {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      },
       headers: {
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('authToken')}`
       }
     })
+
     let fetchedevents = []
 
     for (const event of response.data) {

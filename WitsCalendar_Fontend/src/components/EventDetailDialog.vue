@@ -5,10 +5,18 @@
         <el-input v-model="eventData.title" disabled />
       </el-form-item>
       <el-form-item label="開始日期">
-        <el-date-picker v-model="eventData.startDate" type="datetime" disabled />
+        <el-date-picker
+          v-model="eventData.startDate"
+          :type="eventData.allDay ? 'date' : 'datetime'"
+          disabled
+        />
       </el-form-item>
       <el-form-item label="結束日期">
-        <el-date-picker v-model="eventData.endDate" type="datetime" disabled />
+        <el-date-picker
+          v-model="adjustedEndDate"
+          :type="eventData.allDay ? 'date' : 'datetime'"
+          disabled
+        />
       </el-form-item>
       <el-form-item label="事件說明">
         <el-input type="textarea" v-model="eventData.description" disabled />
@@ -21,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -48,6 +56,16 @@ watch(
   },
   { deep: true }
 )
+
+// If the event is an all-day event, the adjusted end date will be one day before the original end date.
+const adjustedEndDate = computed(() => {
+  if (eventData.value.allDay) {
+    const adjustedDate = new Date(eventData.value.endDate)
+    adjustedDate.setDate(adjustedDate.getDate() - 1)
+    return adjustedDate
+  }
+  return eventData.value.endDate
+})
 
 const handleClose = () => {
   emit('update:visible', false)

@@ -19,10 +19,7 @@
         />
       </el-form-item>
       <el-form-item label="結束日期">
-        <el-date-picker
-          v-model="localEvent.endDate"
-          :type="localEvent.allDay ? 'date' : 'datetime'"
-        />
+        <el-date-picker v-model="adjustedEndDate" :type="localEvent.allDay ? 'date' : 'datetime'" />
       </el-form-item>
       <el-form-item>
         <el-input type="textarea" v-model="localEvent.description" placeholder="事件描述" />
@@ -38,7 +35,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -74,28 +72,50 @@ watch(
   { deep: true }
 )
 
+const adjustedEndDate = computed({
+  get() {
+    if (localEvent.value.allDay && localEvent.value.startDate && localEvent.value.endDate) {
+      const endDate = new Date(localEvent.value.endDate)
+      if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && endDate.getSeconds() === 0) {
+        endDate.setDate(endDate.getDate() - 1)
+      }
+      return endDate
+    }
+    return localEvent.value.endDate
+  },
+  set(value) {
+    if (localEvent.value.allDay) {
+      const adjustedValue = new Date(value)
+      adjustedValue.setDate(adjustedValue.getDate() + 1)
+      adjustedValue.setHours(0, 0, 0, 0)
+      localEvent.value.endDate = adjustedValue
+    } else {
+      localEvent.value.endDate = value
+    }
+  }
+})
+
 const handleSaveEvent = () => {
   if (localEvent.value.title && localEvent.value.startDate && localEvent.value.endDate) {
-    if (props.mode === 'edit') {
-      emit('edit-event', {
-        id: localEvent.value.id,
-        title: localEvent.value.title,
-        startDate: formatDate(localEvent.value.startDate, localEvent.value.allDay),
-        endDate: formatDate(localEvent.value.endDate, localEvent.value.allDay),
-        description: localEvent.value.description,
-        allDay: localEvent.value.allDay
-      })
-    } else {
-      emit('add-event', {
-        title: localEvent.value.title,
-        startDate: formatDate(localEvent.value.startDate, localEvent.value.allDay),
-        endDate: formatDate(localEvent.value.endDate, localEvent.value.allDay),
-        description: localEvent.value.description,
-        allDay: localEvent.value.allDay
-      })
+    const eventData = {
+      id: localEvent.value.id,
+      title: localEvent.value.title,
+      startDate: formatDate(localEvent.value.startDate, localEvent.value.allDay),
+      endDate: formatDate(localEvent.value.endDate, localEvent.value.allDay),
+      description: localEvent.value.description,
+      allDay: localEvent.value.allDay
     }
+
+    if (props.mode === 'edit') {
+      emit('edit-event', eventData)
+    } else {
+      emit('add-event', eventData)
+    }
+
     dialogVisible.value = false
     resetForm()
+  } else {
+    ElMessage.error('請填寫完整資訊')
   }
 }
 

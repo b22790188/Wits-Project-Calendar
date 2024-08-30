@@ -74,7 +74,7 @@ const debouncedEventChange = _.debounce(async function (info) {
       await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`
         }
       })
 
@@ -122,7 +122,6 @@ const calendarOptions = ref({
   eventRemove: async function (info) {
     const googleEventId = info.event.extendedProps.extendsProps?.id
 
-    console.log(googleEventId)
     if (googleEventId) {
       try {
         await axios.delete('http://localhost:8080/events', {
@@ -143,7 +142,6 @@ const calendarOptions = ref({
   eventChange: debouncedEventChange,
 
   eventAdd: async function (info) {
-    console.log('info:', info)
     const isAllDay = info.event.allDay
     let start = info.event.start
     let end = info.event.end
@@ -163,17 +161,15 @@ const calendarOptions = ref({
       newEnd: end,
       allDay: isAllDay
     }
-    console.log('newEvent', newEvent)
 
     try {
       await axios.post('http://localhost:8080/events', newEvent, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`
         }
       })
 
-      console.log('Event successfully added to Google Calendar.')
       ElMessage({
         type: 'success',
         message: '事件已成功添加。'
@@ -331,6 +327,7 @@ const addEvent = (event) => {
       title: event.title,
       start: event.startDate,
       end: event.endDate,
+      allday: event.allDay,
       description: event.description
     }
 
@@ -391,17 +388,30 @@ const editEvent = (updatedEvent) => {
           description: existingEvent.extendedProps.description,
           allday: existingEvent.extendedProps.allDay
         })
-
-        console.log(existingEvent)
-        console.log('Event updated successfully')
+        ElMessage({
+          type: 'success',
+          message: '修改事件成功'
+        })
       } else {
-        console.log('No changes detected for event:', updatedEvent.id)
+        ElMessage({
+          type: 'error',
+          grouping: true,
+          message: '請稍候再重試修改'
+        })
       }
     } else {
-      console.warn('Event not found:', updatedEvent.id)
+      ElMessage({
+        type: 'error',
+        grouping: true,
+        message: '請稍候再重試修改'
+      })
     }
   } else {
-    console.error('Calendar reference not found')
+    ElMessage({
+      type: 'error',
+      grouping: true,
+      message: '請稍候再重試修改'
+    })
   }
 }
 
@@ -417,13 +427,16 @@ const formattedEvent = (event) => {
         start: formattedDateTime(start.dateTime.value),
         end: formattedDateTime(end.dateTime.value),
         description: description,
+        allDay: event.allDay || false,
         extendsProps: { id }
       }
     : {
         id: id,
         title: summary,
-        date: formattedDate(start.date.value),
+        start: formattedDate(start.date.value),
+        end: formattedDate(end.date.value),
         description: description,
+        allDay: true,
         extendsProps: { id }
       }
 }

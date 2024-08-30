@@ -1,7 +1,4 @@
 <template>
-  <header>
-    <img src="../assets/wits-logo.png" alt="logo" id="logo" />
-  </header>
   <div id="app">
     <Calendar
       ref="calendar"
@@ -37,7 +34,13 @@ const Time = {
 
 const isDialogVisible = ref(false)
 const isDetailDialogVisible = ref(false)
-const selectedEventData = ref({ title: '', startDate: '', endDate: '', description: '' })
+const selectedEventData = ref({
+  title: '',
+  startDate: '',
+  endDate: '',
+  description: '',
+  allDay: false
+})
 const calendar = ref(null)
 const dialogMode = ref('add')
 
@@ -83,7 +86,8 @@ const handleEventClick = (event) => {
     title: event.title,
     startDate: event.start,
     endDate: event.end,
-    description: event.extendedProps.description
+    description: event.extendedProps.description,
+    allDay: event.allDay
   }
   isDetailDialogVisible.value = true
 }

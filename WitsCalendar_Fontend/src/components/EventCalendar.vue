@@ -74,7 +74,7 @@ const debouncedEventChange = _.debounce(async function (info) {
       }
       console.log('requestData: ', requestData)
 
-      await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
+      await axios.put(`/events/${googleEventId}`, requestData, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('authToken')}`
@@ -111,7 +111,7 @@ const calendarOptions = ref({
     viewEnd = info.end.toISOString()
 
     try {
-      const response = await axios.get('http://localhost:8080/events', {
+      const response = await axios.get('/events', {
         params: {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate
@@ -162,7 +162,7 @@ const calendarOptions = ref({
 
     if (googleEventId) {
       try {
-        await axios.delete('http://localhost:8080/events', {
+        await axios.delete('/events', {
           params: { eventId: googleEventId },
           headers: {
             Authorization: `Bearer ${localStorage.getItem('authToken')}`
@@ -201,7 +201,7 @@ const calendarOptions = ref({
     }
 
     try {
-      await axios.post('http://localhost:8080/events', newEvent, {
+      await axios.post('/events', newEvent, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('authToken')}`
@@ -254,7 +254,7 @@ const fetchEvents = async () => {
   }
 
   try {
-    const response = await axios.get('http://localhost:8080/events', {
+    const response = await axios.get('/events', {
       params: {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate

@@ -91,7 +91,7 @@ public class CalendarService {
 
         if (request.isAllDay()) {
             LocalDate startDate = parseDate(request.getNewStart());
-            LocalDate endDate = parseDate(request.getNewEnd()).plusDays(1);
+            LocalDate endDate = parseDate(request.getNewEnd());
 
             event.setStart(new EventDateTime().setDate(new DateTime(startDate.toString())))
                 .setEnd(new EventDateTime().setDate(new DateTime(endDate.toString())));

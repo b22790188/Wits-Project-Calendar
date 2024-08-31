@@ -72,16 +72,59 @@ watch(
   { deep: true }
 )
 
+watch(
+  () => localEvent.value.allDay,
+  (newVal) => {
+    if (newVal) {
+      if (localEvent.value.startDate) {
+        localEvent.value.startDate = new Date(localEvent.value.startDate)
+        localEvent.value.startDate.setHours(0, 0, 0, 0)
+      }
+
+      if (localEvent.value.endDate) {
+        const endDate = new Date(localEvent.value.endDate)
+        endDate.setHours(0, 0, 0, 0)
+        if (endDate <= localEvent.value.startDate) {
+          endDate.setDate(localEvent.value.startDate.getDate() + 1)
+        }
+        localEvent.value.endDate = endDate
+      } else {
+        localEvent.value.endDate = new Date(localEvent.value.startDate)
+        localEvent.value.endDate.setDate(localEvent.value.startDate.getDate() + 1)
+        localEvent.value.endDate.setHours(0, 0, 0, 0)
+      }
+    } else {
+      if (localEvent.value.startDate) {
+        localEvent.value.startDate = new Date(localEvent.value.startDate)
+      }
+
+      if (localEvent.value.endDate) {
+        localEvent.value.endDate = new Date(localEvent.value.endDate)
+        localEvent.value.endDate.setDate(localEvent.value.endDate.getDate())
+        if (localEvent.value.endDate <= localEvent.value.startDate) {
+          localEvent.value.endDate.setTime(localEvent.value.startDate.getTime() + 60 * 60 * 1000)
+        }
+      }
+    }
+  },
+  { immediate: true }
+)
+
 const adjustedEndDate = computed({
   get() {
-    if (localEvent.value.allDay && localEvent.value.startDate && localEvent.value.endDate) {
+    if (!localEvent.value.endDate) {
+      return localEvent.value.startDate
+    }
+
+    if (localEvent.value.allDay) {
       const endDate = new Date(localEvent.value.endDate)
       if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && endDate.getSeconds() === 0) {
         endDate.setDate(endDate.getDate() - 1)
       }
       return endDate
+    } else {
+      return localEvent.value.endDate
     }
-    return localEvent.value.endDate
   },
   set(value) {
     if (localEvent.value.allDay) {
@@ -139,6 +182,8 @@ const formatDate = (date, isAllDay) => {
 }
 
 const resetForm = () => {
-  localEvent.value = { title: '', startDate: '', endDate: '', description: '', allDay: false }
+  localEvent.value = JSON.parse(
+    JSON.stringify({ title: '', startDate: '', endDate: '', description: '', allDay: false })
+  )
 }
 </script>

@@ -72,7 +72,6 @@ const debouncedEventChange = _.debounce(async function (info) {
         newEnd: end,
         allDay: isAllDay
       }
-      console.log('requestData: ', requestData)
 
       await axios.put(`http://localhost:8080/events/${googleEventId}`, requestData, {
         headers: {
@@ -81,13 +80,25 @@ const debouncedEventChange = _.debounce(async function (info) {
         }
       })
 
-      console.log('Event successfully updated in Google Calendar.')
+      ElMessage({
+        type: 'success',
+        grouping: true,
+        message: '修改事件成功'
+      })
       await fetchEvents()
     } catch (error) {
-      console.error('Failed to update event in Google Calendar:', error)
+      ElMessage({
+        type: 'error',
+        grouping: true,
+        message: '修改事件失敗，請稍候再重試'
+      })
     }
   } else {
-    console.warn('Google Event ID is not available.')
+    ElMessage({
+      type: 'error',
+      grouping: true,
+      message: '修改事件失敗，請稍候再重試'
+    })
   }
 }, 500)
 
@@ -125,7 +136,6 @@ const calendarOptions = ref({
       let fetchedevents = []
 
       for (const event of response.data) {
-        console.log(event)
         fetchedevents.push(formattedEvent(event))
       }
 
@@ -168,13 +178,23 @@ const calendarOptions = ref({
             Authorization: `Bearer ${localStorage.getItem('authToken')}`
           }
         })
-        console.log('Event successfully deleted from Google Calendar.')
+
+        ElMessage({
+          type: 'success',
+          message: '刪除成功！'
+        })
       } catch (error) {
-        console.error('Failed to delete event from Google Calendar:', error)
+        ElMessage({
+          type: 'error',
+          message: '刪除事件失敗，請稍候再重試'
+        })
         info.revert()
       }
     } else {
-      console.warn('Google Event ID is not available.')
+      ElMessage({
+        type: 'error',
+        message: '刪除事件失敗，請稍候再重試'
+      })
     }
   },
   eventChange: debouncedEventChange,
@@ -268,7 +288,6 @@ const fetchEvents = async () => {
     let fetchedevents = []
 
     for (const event of response.data) {
-      console.log(event)
       fetchedevents.push(formattedEvent(event))
     }
 
@@ -341,10 +360,6 @@ const deleteSelectedEvent = () => {
 
         isPopoverVisible.value = false
         selectedEvent.value = null
-        ElMessage({
-          type: 'success',
-          message: '刪除成功！'
-        })
       })
       .catch(() => {
         ElMessage({
@@ -377,7 +392,6 @@ const addEvent = (event) => {
     }
 
     api.addEvent(newEvent)
-    console.log('Added event:', newEvent)
   }
 }
 
@@ -394,13 +408,10 @@ const editEvent = (updatedEvent) => {
     if (existingEvent) {
       let changesMade = false
 
-      console.log('Before update:', {
-        title: existingEvent.title,
-        start: existingEvent.start,
-        end: existingEvent.end,
-        description: existingEvent.extendedProps.description,
-        allday: existingEvent.allDay
-      })
+      if (existingEvent.extendedProps.allDay !== updatedEvent.allDay) {
+        existingEvent.setExtendedProp('allDay', updatedEvent.allDay)
+        changesMade = true
+      }
 
       if (existingEvent.title !== updatedEvent.title) {
         existingEvent.setProp('title', updatedEvent.title)
@@ -420,19 +431,7 @@ const editEvent = (updatedEvent) => {
         changesMade = true
       }
 
-      if (existingEvent.extendedProps.allDay !== updatedEvent.allDay) {
-        existingEvent.setExtendedProp('allDay', updatedEvent.allDay)
-        changesMade = true
-      }
-
       if (changesMade) {
-        console.log('After update:', {
-          title: existingEvent.title,
-          start: existingEvent.start,
-          end: existingEvent.end,
-          description: existingEvent.extendedProps.description,
-          allday: existingEvent.extendedProps.allDay
-        })
         ElMessage({
           type: 'success',
           message: '修改事件成功'

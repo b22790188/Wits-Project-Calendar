@@ -76,7 +76,6 @@ const handleEditEvent = (event) => {
     description: event.extendedProps.description,
     allDay: event.allDay
   }
-  console.log('handleEdit', event)
   dialogMode.value = 'edit'
   isDialogVisible.value = true
 }
@@ -101,7 +100,6 @@ const addEvent = (event) => {
 }
 
 const editEvent = (event) => {
-  console.log('calendar.value:', calendar.value)
   if (calendar.value) {
     calendar.value.editEvent(event)
   } else {

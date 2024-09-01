@@ -5,7 +5,7 @@ services:
     networks:
       - calendar
     ports:
-      - "80:5173"
+      - "5173:80"
     depends_on:
       - backend
   backend:

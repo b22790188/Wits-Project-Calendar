@@ -35,10 +35,6 @@ build/
 ### VS Code ###
 .vscode/
 
-### github ###
-.github
-
-
 ### project ###
 src/main/resources/credentials.json
 src/main/resources/application.properties
